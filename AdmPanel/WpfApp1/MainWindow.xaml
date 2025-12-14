@@ -1,0 +1,211 @@
+﻿<Window x:Class="MAGIAdmin.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MAGI - v1.1.0" Height="820" Width="960"
+        Background="#C5C5FF"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- заголовок -->
+            <RowDefinition Height="*"/>
+            <!-- основная сетка -->
+            <RowDefinition Height="220"/>
+            <!-- консоль -->
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" Text="MAGI - v1.1.0"
+                   HorizontalAlignment="Center"
+                   FontSize="24" FontWeight="Bold"
+                   Margin="0,0,0,10"/>
+
+        <!-- Основная область -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ЛЕВАЯ КОЛОНКА -->
+            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                <!-- Настройка путей -->
+                <GroupBox Header="Настройка путей" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="Корневая папка проекта"
+                                Background="#B5B5D8"
+                                Foreground="White"
+                                FontWeight="Bold"
+                                Click="Button_ProjectRoot_Click"
+                                Height="40" Margin="0,0,0,6"/>
+
+                        <!-- Поле ввода: корневая папка с артамии -->
+                        <TextBox x:Name="TextBox_ArtsRoot"
+                                 Text="Корневая папка с артамии"
+                                 Foreground="Black"
+                                 Background="#E0E0FF"
+                                 Height="40" Margin="0,0,0,6"
+                                 VerticalContentAlignment="Center"/>
+
+                        <!-- Поле ввода: ссылка на канал -->
+                        <TextBox x:Name="TextBox_ChannelLink"
+                                 Text="Ссылка на канал"
+                                 Foreground="Black"
+                                 Background="#E0E0FF"
+                                 Height="40"
+                                 VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- БД артов -->
+                <GroupBox Header="БД артов" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="Check-Images"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                Click="Button_CheckImages_Click"/>
+                        <Button Content="New-Images"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                Click="Button_NewImages_Click"/>
+                        <Button Content="Post-Images"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36"
+                                Click="Button_PostImages_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- FilenameTagger -->
+                <GroupBox Header="FilenameTagger"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="START"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="40"
+                                Click="Button_FilenameTaggerStart_Click"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+
+            <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА -->
+            <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                <!-- БД .json -->
+                <GroupBox Header="БД .json" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="images.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                Click="Button_ImagesDb_Click"/>
+                        <Button Content="posted_images.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                Click="Button_PostedImagesDb_Click"/>
+                        <Button Content="schedule.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="36"
+                                Click="Button_ScheduleDb_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Функции clear -->
+                <GroupBox Header="Функции clear" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="images.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                Click="Button_ClearImages_Click"/>
+                        <Button Content="posted_images.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                Click="Button_ClearPostedImages_Click"/>
+                        <Button Content="schedule.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                Click="Button_ClearSchedule_Click"/>
+                        <Button Content="all clear"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="32"
+                                Click="Button_ClearAll_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Auto-post -->
+                <GroupBox Header="Auto-post"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="START"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="40"
+                                Click="Button_AutoPostStart_Click"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+
+            <!-- ПРАВАЯ КОЛОНКА -->
+            <StackPanel Grid.Column="2">
+                <!-- Расписание -->
+                <GroupBox Header="Расписание" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <Button Content="config.py"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="40"
+                                Click="Button_Config_Click"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Аккаунт для постинга -->
+                <GroupBox Header="Аккаунт для постинга"
+                          FontWeight="Bold" FontSize="14">
+                    <StackPanel Margin="8">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+
+                            <RadioButton x:Name="Radio_Personal"
+                                         Content="Личный"
+                                         FontWeight="Bold"
+                                         />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="Radio_Bot"
+                                         Content="Бот"
+                                         FontWeight="Bold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </Grid>
+
+        <!-- КОНСОЛЬ С ЛОГАМИ -->
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="Консоль с логами"
+                       HorizontalAlignment="Right"
+                       Margin="0,0,10,4"
+                       FontWeight="Bold"/>
+
+            <Border Grid.Row="1"
+                    BorderBrush="#999" BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="LogTextBox"
+                             Background="White"
+                             IsReadOnly="True"
+                             FontFamily="Consolas"
+                             FontSize="12"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             BorderThickness="0"/>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
