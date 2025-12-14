@@ -1,30 +1,41 @@
 import os
+import sys
 import json
 import shutil
-from dotenv import load_dotenv
 from pathlib import Path
 
-# ----------------------------------------
-# 1. Загрузка окружения и путей
-# ----------------------------------------
-load_dotenv()
-BASE_DIR            = Path(os.getenv('BASE_DIR', os.getcwd()))
-IMAGES_FOLDER       = Path(os.getenv('IMAGES_FOLDER', BASE_DIR / 'New-Images'))
-CHECK_FOLDER        = Path(os.getenv('CHECK_IMAGES_FOLDER', BASE_DIR / 'Check-Images'))
-DATA_JSON_DIR       = Path(os.getenv('DATA_JSON_DIR', BASE_DIR / 'data' / 'json'))
-JSON_PATH           = DATA_JSON_DIR / 'images.json'
-DESCRIPTION_DEFAULT = os.getenv('DESCRIPTION_DEFAULT', '#defolt')
+# --- чтобы видеть пакет config из корня проекта ---
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT_DIR)
 
-# Убедимся, что директория для перемещения существует
-CHECK_FOLDER.mkdir(parents=True, exist_ok=True)
+from config.config_loader import load_effective_config
 
-# Счетчики
-count_files = 0
 
-# ----------------------------------------
-# 2. Сопоставление частей имени файла → хештег персонажа
-# ----------------------------------------
-filename_to_tag = {
+# -----------------------------
+# JSON helpers
+# -----------------------------
+def load_json(path: Path, default=None):
+    if default is None:
+        default = {}
+    if not path.exists():
+        return default
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def save_json(path: Path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+# -----------------------------
+# mapping: filename -> tag
+# -----------------------------
+FILENAME_TO_TAG = {
     "shinji": "#Shinji_Ikari",
     "gendo": "#Gendo_Ikari",
     "rei": "#Rei_Ayanami",
@@ -39,56 +50,67 @@ filename_to_tag = {
     "makinami": "#Mari_Makinami"
 }
 
-# Загружаем или создаем JSON
-if os.path.exists(JSON_PATH):
-    with open(JSON_PATH, 'r', encoding='utf-8') as f:
-        images_data = json.load(f)
-else:
-    images_data = {}
 
-# ----------------------------------------
-# 3. Обрабатываем изображения
-# ----------------------------------------
-for fname in os.listdir(IMAGES_FOLDER):
-    if not fname.lower().endswith(('.png', '.jpg', '.jpeg')):
-        continue
+def main():
+    cfg = load_effective_config()
 
-    if fname in images_data and images_data[fname]["person"]:
-        continue  # уже обработан ранее
+    NEW_IMAGES_DIR: Path = cfg.new_images_dir        # arts_root/new-images
+    CHECK_IMAGES_DIR: Path = cfg.check_images_dir    # arts_root/check-images
+    IMAGES_JSON: Path = cfg.images_json              # project_root/data/json/images.json
 
-    fname_lower = fname.lower()
+    NEW_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    CHECK_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-    matched_tag = None
-    for keyword, tag in filename_to_tag.items():
-        if keyword in fname_lower:
-            matched_tag = tag
-            break
+    images_data = load_json(IMAGES_JSON, {})
 
-    if matched_tag:
+    count_files = 0
+
+    for file_path in NEW_IMAGES_DIR.iterdir():
+        if not file_path.is_file():
+            continue
+
+        fname = file_path.name
+        if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue
+
+        # уже обработан ранее
+        if fname in images_data and images_data[fname].get("person"):
+            continue
+
+        fname_lower = fname.lower()
+
+        matched_tag = None
+        for keyword, tag in FILENAME_TO_TAG.items():
+            if keyword in fname_lower:
+                matched_tag = tag
+                break
+
+        if not matched_tag:
+            continue
+
         images_data[fname] = {
             "person": matched_tag,
-            "description": DESCRIPTION_DEFAULT,
             "posted": 0,
             "post_time": None,
             "caption": ""
         }
 
-        print(f"\033[93m[FILENAME]\033[0m {fname} → {matched_tag}")
+        print(f"[FILENAME] {fname} → {matched_tag}")
         count_files += 1
-        # Перемещаем файл
-        src_path = IMAGES_FOLDER / fname
-        dst_path = CHECK_FOLDER / fname
-        shutil.move(str(src_path), str(dst_path))
 
-# ----------------------------------------
-# 4. Сохраняем JSON
-# ----------------------------------------
-with open(JSON_PATH, 'w', encoding='utf-8') as f:
-    json.dump(images_data, f, ensure_ascii=False, indent=4)
+        src = file_path
+        dst = CHECK_IMAGES_DIR / fname
+        try:
+            shutil.move(str(src), str(dst))
+        except Exception as e:
+            print(f"[ERROR] Не смог переместить {fname}: {e}")
 
-# ----------------------------------------
-# 5. Вывод статистики
-# ----------------------------------------
-print("\n\033[92m" + "="*50)
-print(f"ОБРАБОТКА ЗАВЕРШЕНА")
-print(f"Общее количество проанализированных файлов: {count_files}")
+    save_json(IMAGES_JSON, images_data)
+
+    print("\n" + "=" * 50)
+    print("ОБРАБОТКА ЗАВЕРШЕНА")
+    print(f"Общее количество обработанных файлов: {count_files}")
+
+
+if __name__ == "__main__":
+    main()
