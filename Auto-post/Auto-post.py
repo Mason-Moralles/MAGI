@@ -14,7 +14,6 @@ from telethon import TelegramClient
 
 from config.config_loader import load_effective_config
 
-
 def log(tz, msg, level="info"):
     ts = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] [{level.upper():7}] {msg}")
@@ -131,7 +130,6 @@ async def run_post_flow():
 
     async with client:
         if cfg.telegram_mode == "bot":
-            # Telethon: bot всё равно требует api_id/api_hash, token нужен для start()
             await client.start(bot_token=cfg.bot_token)
         else:
             if not await client.is_user_authorized():
@@ -146,7 +144,6 @@ async def run_post_flow():
             src = cfg.check_images_dir / art
             if not src.exists():
                 log(tz, f"Файл не найден в check-images: {src}", "error")
-                # помечаем как проблемный и идём дальше (или break — как решишь)
                 images_data.pop(art, None)
                 save_json(cfg.images_json, images_data)
                 continue

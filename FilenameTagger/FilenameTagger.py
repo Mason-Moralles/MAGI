@@ -4,7 +4,6 @@ import json
 import shutil
 from pathlib import Path
 
-# --- чтобы видеть пакет config из корня проекта ---
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT_DIR)
 
@@ -12,7 +11,7 @@ from config.config_loader import load_effective_config
 
 
 # -----------------------------
-# JSON helpers
+# JSON 
 # -----------------------------
 def load_json(path: Path, default=None):
     if default is None:
@@ -95,7 +94,7 @@ def main():
             "caption": ""
         }
 
-        print(f"[FILENAME] {fname} → {matched_tag}")
+        print(f"[FILENAME] {fname} -> {matched_tag}")
         count_files += 1
 
         src = file_path

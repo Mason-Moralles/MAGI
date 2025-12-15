@@ -1,8 +1,9 @@
 {
+  "version": 1,
   "paths": {
-    "check-images": "check-images",
-    "new-images": "new-images",
-    "post-images": "post-images"
+    "check-images": "Сheck-Images",
+    "new-images": "New-Images",
+    "post-images": "Post-Images"
   },
   "schedule": {
     "delay_between_post": 5

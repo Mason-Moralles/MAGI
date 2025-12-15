@@ -15,7 +15,7 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок -->
-        <TextBlock Grid.Row="0" Text="MAGI - v1.1.0"
+        <TextBlock Grid.Row="0" Text="MAGI"
                    HorizontalAlignment="Center"
                    FontSize="24" FontWeight="Bold"
                    Margin="0,0,0,10"/>
@@ -32,32 +32,77 @@
             <StackPanel Grid.Column="0" Margin="0,0,10,0">
                 <!-- Настройка путей -->
                 <GroupBox Header="Настройка путей" Margin="0,0,0,10"
-                          FontWeight="Bold" FontSize="14">
-                    <StackPanel Margin="8">
-                        <Button Content="Корневая папка проекта"
-                                Background="#B5B5D8"
-                                Foreground="White"
-                                FontWeight="Bold"
-                                Click="Button_ProjectRoot_Click"
-                                Height="40" Margin="0,0,0,6"/>
+          FontWeight="Bold" FontSize="14">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <!-- Поле ввода: корневая папка с артамии -->
-                        <TextBox x:Name="TextBox_ArtsRoot"
-                                 Text="Корневая папка с артамии"
-                                 Foreground="Black"
-                                 Background="#E0E0FF"
-                                 Height="40" Margin="0,0,0,6"
-                                 VerticalContentAlignment="Center"/>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="70"/>
+                        </Grid.ColumnDefinitions>
 
-                        <!-- Поле ввода: ссылка на канал -->
-                        <TextBox x:Name="TextBox_ChannelLink"
-                                 Text="Ссылка на канал"
+                        <!-- Project root -->
+                        <Border Grid.Row="0" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,6" Height="40">
+                            <TextBlock x:Name="Label_ProjectRoot"
+                               Text="Корневая папка проекта"
+                               Foreground="Black"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="10,0,10,0"
+                               TextTrimming="CharacterEllipsis"/>   
+                        </Border>
+                        <Button Grid.Row="0" Grid.Column="1"
+                            Content="..."
+                            Height="40"
+                            Background="#B5B5D8"
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Click="Button_ProjectRoot_Click"/>
+
+                        <!-- Arts root -->
+                        <Border Grid.Row="1" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,6" Height="40">
+                            <TextBlock x:Name="Label_ArtsRoot"
+                               Text="Корневая папка с артами"
+                               Foreground="Black"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="10,0,10,0"
+                               TextTrimming="CharacterEllipsis"/>
+                        </Border>
+                        <Button Grid.Row="1" Grid.Column="1"
+                            Content="..."
+                            Height="40"
+                            Background="#B5B5D8"
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Click="Button_ArtsRoot_Click"/>
+
+                        <!-- Channel link -->
+                        <Border Grid.Row="2" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,0" Height="40">
+                            <TextBox x:Name="TextBox_ChannelLink"
+                                 Background="#B5B5D8"
+                                 BorderThickness="0"
                                  Foreground="Black"
-                                 Background="#E0E0FF"
-                                 Height="40"
-                                 VerticalContentAlignment="Center"/>
-                    </StackPanel>
+                                 FontWeight="Bold"
+                                 VerticalContentAlignment="Center"
+                                 Margin="10,0,10,0"
+                                 ToolTip="Ссылка или @username Telegram-канала"/>
+                        </Border>
+
+                        <Button Grid.Row="2" Grid.Column="1"
+                            Content="Save"
+                            Height="40"
+                            Background="#B5B5D8"
+                            Foreground="White"
+                            FontWeight="Bold"
+                            Click="Button_ChannelLinkSave_Click"/>
+                    </Grid>
                 </GroupBox>
+
 
                 <!-- БД артов -->
                 <GroupBox Header="БД артов" Margin="0,0,0,10"
@@ -79,7 +124,7 @@
                 </GroupBox>
 
                 <!-- FilenameTagger -->
-                <GroupBox Header="FilenameTagger"
+                <GroupBox Header="FilenameTagger" Margin="0,50,0,10"
                           FontWeight="Bold" FontSize="14">
                     <StackPanel Margin="8">
                         <Button Content="START"
@@ -98,15 +143,15 @@
                     <StackPanel Margin="8">
                         <Button Content="images.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
                                 Click="Button_ImagesDb_Click"/>
-                        <Button Content="posted_images.json"
+                        <Button Content="posted-images.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="36" Margin="0,0,0,6"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
                                 Click="Button_PostedImagesDb_Click"/>
                         <Button Content="schedule.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="36"
+                                FontWeight="Bold" Height="40"
                                 Click="Button_ScheduleDb_Click"/>
                     </StackPanel>
                 </GroupBox>
@@ -117,15 +162,15 @@
                     <StackPanel Margin="8">
                         <Button Content="images.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
                                 Click="Button_ClearImages_Click"/>
-                        <Button Content="posted_images.json"
+                        <Button Content="posted-images.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
                                 Click="Button_ClearPostedImages_Click"/>
                         <Button Content="schedule.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="32" Margin="0,0,0,6"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
                                 Click="Button_ClearSchedule_Click"/>
                         <Button Content="all clear"
                                 Background="#B5B5D8" Foreground="White"
@@ -149,13 +194,17 @@
             <!-- ПРАВАЯ КОЛОНКА -->
             <StackPanel Grid.Column="2">
                 <!-- Расписание -->
-                <GroupBox Header="Расписание" Margin="0,0,0,10"
-                          FontWeight="Bold" FontSize="14">
+                <GroupBox Header="Настройки" Margin="0,0,0,10"
+                          FontWeight="Bold" FontSize="14" Height="175">
                     <StackPanel Margin="8">
-                        <Button Content="config.py"
+                        <Button Content="user-settings.json"
                                 Background="#B5B5D8" Foreground="White"
-                                FontWeight="Bold" Height="40"
-                                Click="Button_Config_Click"/>
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
+                                Click="Button_Usersettings_Click"/>
+                        <Button Content="posting-rules.json"
+                                Background="#B5B5D8" Foreground="White"
+                                FontWeight="Bold" Height="40" Margin="0,0,0,6"
+                                Click="Button_Postingrules_Click"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -203,7 +252,7 @@
                              FontSize="12"
                              TextWrapping="Wrap"
                              AcceptsReturn="True"
-                             BorderThickness="0"/>
+                             BorderThickness="0" Height="185"/>
                 </ScrollViewer>
             </Border>
         </Grid>
