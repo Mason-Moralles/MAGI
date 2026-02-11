@@ -1,0 +1,11 @@
+{
+  "hashtags": [
+    "rei ayanami",
+    "asuka langaly"
+  ],
+  "imagesPerHashtag": 10,
+  "downloadPath": "D:\\MAGI-Images\\Check-Images",
+  "databasePath": "C:\\Downloads\\PinterestArts\\downloaded_images.json",
+  "scrollDelayMs": 2000,
+  "imageLoadDelayMs": 1000
+}

@@ -1,0 +1,11 @@
+{
+  "hashtags": [
+    "rei ayanami",
+    "asuka langaly"
+  ],
+  "imagesPerHashtag": 2,
+  "downloadPath": "D:\\MAGI-Images\\New-Images",
+  "databasePath": "D:\\MAGI\\data\\json\\parser\\downloaded_images.json",
+  "scrollDelayMs": 2000,
+  "imageLoadDelayMs": 1000
+}
