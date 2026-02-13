@@ -34,28 +34,19 @@ def save_json(path: Path, data):
 # -----------------------------
 # mapping: filename -> tag
 # -----------------------------
-FILENAME_TO_TAG = {
-    "shinji": "#Shinji_Ikari",
-    "gendo": "#Gendo_Ikari",
-    "rei": "#Rei_Ayanami",
-    "ayanami": "#Rei_Ayanami",
-    "asuka": "#Asuka_Langley",
-    "langley": "#Asuka_Langley",
-    "misato": "#Misato_Katsuragi",
-    "katsuragi": "#Misato_Katsuragi",
-    "ritsuko": "#Ritsuko_Akagi",
-    "akagi": "#Ritsuko_Akagi",
-    "mari": "#Mari_Makinami",
-    "makinami": "#Mari_Makinami"
-}
+FILENAME_TAGS_JSON: Path = cfg.project_root / "data/json/FilenameTagger/filename_tags.json"
+filename_to_tag = load_json(FILENAME_TAGS_JSON, {})
 
 
 def main():
     cfg = load_effective_config()
 
-    NEW_IMAGES_DIR: Path = cfg.new_images_dir        # arts_root/new-images
-    CHECK_IMAGES_DIR: Path = cfg.check_images_dir    # arts_root/check-images
-    IMAGES_JSON: Path = cfg.images_json              # project_root/data/json/images.json
+    NEW_IMAGES_DIR: Path = cfg.new_images_dir
+    CHECK_IMAGES_DIR: Path = cfg.check_images_dir
+    IMAGES_JSON: Path = cfg.images_json
+
+    FILENAME_TAGS_JSON: Path = cfg.project_root / "data/json/filename_tags.json"
+    filename_to_tag = load_json(FILENAME_TAGS_JSON, {})
 
     NEW_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     CHECK_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
@@ -79,7 +70,7 @@ def main():
         fname_lower = fname.lower()
 
         matched_tag = None
-        for keyword, tag in FILENAME_TO_TAG.items():
+        for keyword, tag in filename_to_tag.items():
             if keyword in fname_lower:
                 matched_tag = tag
                 break

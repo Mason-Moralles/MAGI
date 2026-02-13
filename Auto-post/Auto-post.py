@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import sys
 
+DELAY_BETWEEN_POST_SEC = 5
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT_DIR)
 
@@ -197,7 +198,7 @@ async def run_post_flow():
             last_person = data.get("person")
 
             # Задержка между планированием постов
-            await asyncio.sleep(cfg.delay_between_post_sec)
+            await asyncio.sleep(DELAY_BETWEEN_POST_SEC)
 
     log(tz, f"Готово! Всего запланировано: {len(posted_data)}", "info")
 

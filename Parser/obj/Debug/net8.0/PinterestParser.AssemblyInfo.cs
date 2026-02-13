@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PinterestParser")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+39797643f46f8dcd0894a48d0039e3ce222e9264")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cbbfa257c48a9d617ed640f5d50bc45c73828722")]
 [assembly: System.Reflection.AssemblyProductAttribute("PinterestParser")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PinterestParser")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

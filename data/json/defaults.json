@@ -4,8 +4,5 @@
     "check-images": "Сheck-Images",
     "new-images": "New-Images",
     "post-images": "Post-Images"
-  },
-  "schedule": {
-    "delay_between_post": 5
   }
 }
