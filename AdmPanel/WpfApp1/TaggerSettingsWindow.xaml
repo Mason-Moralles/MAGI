@@ -1,0 +1,98 @@
+<Window x:Class="MAGIAdmin.TaggerSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Настройки файл-теггера" Height="320" Width="500"
+        WindowStartupLocation="CenterOwner"
+        Background="#E6E6FF"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+        <Style x:Key="FieldInput" TargetType="TextBox">
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#B5B5D8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Настройки файл-теггера" FontSize="16" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <!-- Rename template -->
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="Шаблон переименования"/>
+            <TextBox x:Name="TbRenameTemplate" Grid.Column="1" Style="{StaticResource FieldInput}"
+                     Text="{}{artist}_{title}_{id}"/>
+        </Grid>
+
+        <!-- Tag separator -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="Разделитель тегов"/>
+            <TextBox x:Name="TbSeparator" Grid.Column="1" Style="{StaticResource FieldInput}"
+                     Text="_"/>
+        </Grid>
+
+        <!-- Process only new -->
+        <Grid Grid.Row="3" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="Обрабатывать только новые"/>
+            <CheckBox x:Name="CbOnlyNew" Grid.Column="1" VerticalAlignment="Center"
+                      IsChecked="True"/>
+        </Grid>
+
+        <!-- Mode -->
+        <Grid Grid.Row="4" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource FieldLabel}" Text="Режим"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <RadioButton x:Name="RbRename" Content="Переименовать" IsChecked="True" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RbCopy" Content="Копировать" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Grid.Row="5" Text="JSON reference: user_settings.json — секция &quot;tagger&quot;"
+                   FontSize="11" Foreground="Gray" VerticalAlignment="Bottom" Margin="0,8,0,8"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Сохранить" Width="100" Height="34" Margin="0,0,8,0"
+                    Background="#B5B5D8" Foreground="White" FontWeight="Bold"
+                    Click="Save_Click"/>
+            <Button Content="Закрыть" Width="100" Height="34"
+                    Background="#D0D0D0" FontWeight="Bold"
+                    Click="Close_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

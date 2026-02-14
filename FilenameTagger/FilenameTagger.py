@@ -9,10 +9,6 @@ sys.path.insert(0, ROOT_DIR)
 
 from config.config_loader import load_effective_config
 
-
-# -----------------------------
-# JSON 
-# -----------------------------
 def load_json(path: Path, default=None):
     if default is None:
         default = {}
@@ -24,19 +20,10 @@ def load_json(path: Path, default=None):
     except Exception:
         return default
 
-
 def save_json(path: Path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
-
-# -----------------------------
-# mapping: filename -> tag
-# -----------------------------
-FILENAME_TAGS_JSON: Path = cfg.project_root / "data/json/FilenameTagger/filename_tags.json"
-filename_to_tag = load_json(FILENAME_TAGS_JSON, {})
-
 
 def main():
     cfg = load_effective_config()
@@ -45,7 +32,7 @@ def main():
     CHECK_IMAGES_DIR: Path = cfg.check_images_dir
     IMAGES_JSON: Path = cfg.images_json
 
-    FILENAME_TAGS_JSON: Path = cfg.project_root / "data/json/filename_tags.json"
+    FILENAME_TAGS_JSON: Path = cfg.project_root / "data/json/FilenameTagger/filename_tags.json"
     filename_to_tag = load_json(FILENAME_TAGS_JSON, {})
 
     NEW_IMAGES_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,254 +1,720 @@
-﻿<Window x:Class="MAGIAdmin.MainWindow"
+<Window x:Class="MAGIAdmin.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MAGI - v1.1.0" Height="820" Width="960"
-        Background="#C5C5FF"
+        xmlns:local="clr-namespace:MAGIAdmin"
+        Title="MAGI" Height="900" Width="1360"
+        MinHeight="700" MinWidth="1000"
+        Background="#DCD8F0"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
-        <!-- Единый стиль групп -->
-        <Style x:Key="MagiGroupBox" TargetType="GroupBox">
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="BorderBrush" Value="#E6E6FF"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="Padding" Value="8"/>
-            <Setter Property="Margin" Value="0"/>
+        <!-- ══════════ CONVERTERS ══════════ -->
+        <local:ImagePathConverter x:Key="ImagePathConverter"/>
+
+        <!-- ══════════ COLORS ══════════ -->
+        <SolidColorBrush x:Key="BgMain" Color="#DCD8F0"/>
+        <SolidColorBrush x:Key="BgCard" Color="#F0EEFF"/>
+        <SolidColorBrush x:Key="BgCardBorder" Color="#C5C5FF"/>
+        <SolidColorBrush x:Key="BgAccent" Color="#B5B5D8"/>
+        <SolidColorBrush x:Key="BgButton" Color="#C8C0E8"/>
+        <SolidColorBrush x:Key="BgButtonHover" Color="#AEA6D6"/>
+        <SolidColorBrush x:Key="BgConsole" Color="#F5F3FF"/>
+        <SolidColorBrush x:Key="BgSidebar" Color="#E8E4F8"/>
+        <SolidColorBrush x:Key="FgText" Color="#333"/>
+        <SolidColorBrush x:Key="FgMuted" Color="#888"/>
+
+        <!-- ══════════ BUTTON STYLE ══════════ -->
+        <Style x:Key="MagiBtn" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource BgButton}"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource BgButtonHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Единый стиль кнопок -->
-        <Style x:Key="MagiButton" TargetType="Button">
-            <Setter Property="Background" Value="#B5B5D8"/>
-            <Setter Property="Foreground" Value="White"/>
+        <!-- Start button (bigger, purple) -->
+        <Style x:Key="StartBtn" TargetType="Button" BasedOn="{StaticResource MagiBtn}">
+            <Setter Property="Background" Value="#C5C5FF"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Height" Value="40"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="38"/>
+        </Style>
+
+        <!-- Gear button (settings icon) -->
+        <Style x:Key="GearBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Content" Value="⚙"/>
+            <Setter Property="Foreground" Value="#888"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#D5D0EE"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Card panel -->
+        <Style x:Key="CardBorder" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BgCard}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BgCardBorder}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="14"/>
+        </Style>
+
+        <!-- TabControl style (sidebar look) -->
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <!-- DataGrid style -->
+        <Style x:Key="ScheduleGrid" TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E0DCFF"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#C5C5FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowHeight" Value="36"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <!-- Заголовок -->
-            <RowDefinition Height="Auto"/>
-            <!-- Основная сетка блоков -->
-            <RowDefinition Height="*"/>
-            <!-- Консоль -->
-        </Grid.RowDefinitions>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="180"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- Заголовок -->
-        <TextBlock Grid.Row="0" Text="MAGI"
-                   HorizontalAlignment="Center"
-                   FontSize="24" FontWeight="Bold"
-                   Margin="0,0,0,10"/>
+        <!-- ══════════ SIDEBAR ══════════ -->
+        <Border Grid.Column="0" Background="{StaticResource BgSidebar}" Padding="0,20,0,0">
+            <StackPanel>
+                <!-- Logo -->
+                <TextBlock Text="MAGI" FontSize="24" FontWeight="Bold" Foreground="#555"
+                           HorizontalAlignment="Center" Margin="0,0,0,24"/>
 
-        <!-- ===================== ОСНОВНАЯ РОВНАЯ СЕТКА ===================== -->
-        <Grid Grid.Row="1">
-            <!-- 3 колонки одинаковой ширины (ровная сетка) -->
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+                <!-- Nav buttons -->
+                <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
+                         SelectionChanged="NavList_SelectionChanged">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="16,10"/>
+                            <Setter Property="FontSize" Value="14"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Foreground" Value="#555"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#D5D0F0"/>
+                                                <Setter Property="Foreground" Value="#6B5CE7"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#E0DCF4"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
 
-            <!-- 3 строки: верхняя, средняя, нижняя -->
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+                    <ListBoxItem Content="⚙  Микросервисы" IsSelected="True"/>
+                    <ListBoxItem Content="📁  База артов"/>
+                    <ListBoxItem Content="📅  Расписание"/>
+                </ListBox>
+            </StackPanel>
+        </Border>
 
-            <!-- Чтобы расстояние между блоками было одинаковым -->
-            <Grid.Margin>0</Grid.Margin>
-
-            <!-- ROW 1 -->
-            <GroupBox Grid.Row="0" Grid.Column="0" Header="Настройка путей"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,10">
-                <Grid Margin="8">
+        <!-- ══════════ CONTENT AREA ══════════ -->
+        <Border Grid.Column="1" Padding="20">
+            <Grid>
+                <!-- PAGE 0: Микросервисы -->
+                <Grid x:Name="PageMicroservices" Visibility="Visible">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                        <Ellipse Width="12" Height="12" Fill="#7B6EE7" Margin="0,0,8,0"/>
+                        <TextBlock Text="Микросервисы" FontSize="18" FontWeight="Bold" Foreground="#444"/>
+                    </StackPanel>
+
+                    <!-- ─── Service cards ─── -->
+                    <Grid Grid.Row="1" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- PARSER CARD -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Header row -->
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Парсер" FontSize="15" FontWeight="Bold" Foreground="#444"/>
+                                        <Ellipse x:Name="ParserStatusDot" Width="10" Height="10" Fill="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ParserStatusText" Text="Status: Stopped" FontSize="11" Foreground="#888" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="ParserSettings_Click"/>
+                                </Grid>
+
+                                <!-- Account type for parser - not needed, placeholder -->
+                                <Border Grid.Row="2" Background="Transparent" MinHeight="80"/>
+
+                                <Button Grid.Row="3" x:Name="BtnParserStart" Content="START" Style="{StaticResource StartBtn}" Click="ParserStart_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- FILE TAGGER CARD -->
+                        <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Файл-теггер" FontSize="15" FontWeight="Bold" Foreground="#444"/>
+                                        <Ellipse x:Name="TaggerStatusDot" Width="10" Height="10" Fill="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="TaggerStatusText" Text="Status: Stopped" FontSize="11" Foreground="#888" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="TaggerSettings_Click"/>
+                                </Grid>
+
+                                <Border Grid.Row="2" Background="Transparent" MinHeight="80"/>
+
+                                <Button Grid.Row="3" x:Name="BtnTaggerStart" Content="START" Style="{StaticResource StartBtn}" Click="TaggerStart_Click"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- AUTOPOSTING CARD -->
+                        <Border Grid.Column="4" Style="{StaticResource CardBorder}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Автопостинг" FontSize="15" FontWeight="Bold" Foreground="#444"/>
+                                        <Ellipse x:Name="AutopostStatusDot" Width="10" Height="10" Fill="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="AutopostStatusText" Text="Status: Stopped" FontSize="11" Foreground="#888" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="AutopostSettings_Click"/>
+                                </Grid>
+
+                                <!-- Account type selector -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="Аккаунт для постинга" FontSize="12" Foreground="#666" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <RadioButton x:Name="RadioPersonal" Content="Линный" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    <RadioButton x:Name="RadioBot" Content="Бот" IsChecked="True" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <Border Grid.Row="2" Background="Transparent" MinHeight="60"/>
+
+                                <Button Grid.Row="3" x:Name="BtnAutopostStart" Content="START" Style="{StaticResource StartBtn}" Click="AutopostStart_Click"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- ─── Console Logs ─── -->
+                    <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Console toolbar -->
+                            <Border Grid.Row="0" Background="#F5F3FF" CornerRadius="10,10,0,0" Padding="12,8">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <CheckBox x:Name="CbAutoScroll" Content="Auto-scroll" IsChecked="True"
+                                              VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                    <Button Content="⏸ Pause" Style="{StaticResource MagiBtn}" Padding="10,4"
+                                            x:Name="BtnPause" Click="ConsolePause_Click" Margin="0,0,8,0"/>
+                                    <Button Content="🗑 Clear" Style="{StaticResource MagiBtn}" Padding="10,4"
+                                            Click="ConsoleClear_Click"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Log list -->
+                            <Border Grid.Row="1" Background="White" CornerRadius="0,0,10,10">
+                                <ListView x:Name="LogListView" Background="Transparent" BorderThickness="0"
+                                          FontFamily="Consolas" FontSize="12"
+                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="4,2">
+                                                <TextBlock Text="{Binding TimeFormatted}" Foreground="#888" Width="80"
+                                                           FontFamily="Consolas"/>
+                                                <TextBlock Text="{Binding ServiceIcon}" Width="20" Margin="4,0"/>
+                                                <TextBlock Text="{Binding Service}" FontWeight="SemiBold" Width="90"
+                                                           Foreground="#555" FontFamily="Consolas"/>
+                                                <TextBlock Text="{Binding Level}" FontWeight="Bold" Width="55"
+                                                           Foreground="{Binding LevelBrush}" FontFamily="Consolas"/>
+                                                <TextBlock Text="{Binding Message}" Foreground="#333" TextWrapping="Wrap"
+                                                           FontFamily="Consolas"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- PAGE 1: База артов -->
+                <Grid x:Name="PageArtsBase" Visibility="Collapsed">
+                    <Grid.ContextMenu>
+                        <ContextMenu x:Name="ImageContextMenu">
+                            <MenuItem Header="Открыть" Click="CtxOpenImage_Click"/>
+                            <MenuItem Header="Удалить" Click="CtxDeleteImage_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Отметить как опубликованное" Click="CtxMarkPublished_Click"/>
+                            <MenuItem Header="Копировать путь" Click="CtxCopyPath_Click"/>
+                        </ContextMenu>
+                    </Grid.ContextMenu>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="70"/>
-                    </Grid.ColumnDefinitions>
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Ellipse Width="12" Height="12" Fill="#7B6EE7" Margin="0,0,8,0"/>
+                        <TextBlock Text="База артов" FontSize="18" FontWeight="Bold" Foreground="#444"/>
+                    </StackPanel>
 
-                    <!-- Project root -->
-                    <Border Grid.Row="0" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,6" Height="40">
-                        <TextBlock x:Name="Label_ProjectRoot"
-                                   Text="Корневая папка проекта"
-                                   Foreground="Black"
-                                   FontWeight="Bold"
-                                   VerticalAlignment="Center"
-                                   Margin="10,0,10,0"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Border>
-                    <Button Grid.Row="0" Grid.Column="1"
-                            Content="..."
-                            Height="40"
-                            Background="#B5B5D8"
-                            Foreground="White"
-                            FontWeight="Bold"
-                            Click="Button_ProjectRoot_Click"/>
+                    <!-- Toolbar -->
+                    <Border Grid.Row="1" Style="{StaticResource CardBorder}" Padding="12,10" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                    <!-- Arts root -->
-                    <Border Grid.Row="1" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,6" Height="40">
-                        <TextBlock x:Name="Label_ArtsRoot"
-                                   Text="Корневая папка с артами"
-                                   Foreground="Black"
-                                   FontWeight="Bold"
-                                   VerticalAlignment="Center"
-                                   Margin="10,0,10,0"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Border>
-                    <Button Grid.Row="1" Grid.Column="1"
-                            Content="..."
-                            Height="40"
-                            Background="#B5B5D8"
-                            Foreground="White"
-                            FontWeight="Bold"
-                            Click="Button_ArtsRoot_Click"/>
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <TextBlock Text="↑ Путь:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox x:Name="TbArtsPath" Width="300" Height="28" FontSize="12"
+                                         Background="White" BorderBrush="#C5C5FF" Padding="6,4"
+                                         IsReadOnly="True"/>
+                                <Button Content="..." Height="28" Width="35" Margin="4,0,0,0"
+                                        Background="#B5B5D8" Foreground="White" FontWeight="Bold"
+                                        FontSize="14" Click="BrowseArtsPath_Click"
+                                        ToolTip="Выбрать папку с артами">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="6" Padding="4,2">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#9E96C8"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <TextBlock Text="🔍" VerticalAlignment="Center" Margin="16,0,4,0"/>
+                                <TextBox x:Name="TbSearchFile" Width="180" Height="28" FontSize="12"
+                                         Background="White" BorderBrush="#C5C5FF" Padding="6,4"
+                                         TextChanged="SearchFile_TextChanged"/>
+                            </StackPanel>
 
-                    <!-- Channel link -->
-                    <Border Grid.Row="2" Grid.Column="0" Background="#B5B5D8" Margin="0,0,8,0" Height="40">
-                        <TextBox x:Name="TextBox_ChannelLink"
-                                 Background="#B5B5D8"
-                                 BorderThickness="0"
-                                 Foreground="Black"
-                                 FontWeight="Bold"
-                                 VerticalContentAlignment="Center"
-                                 Margin="10,0,10,0"
-                                 ToolTip="Ссылка или @username Telegram-канала"/>
+                            <!-- Folder tabs -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock Text="Папка:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <ItemsControl x:Name="FolderTabsPanel">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock Text="Вид:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <Button x:Name="BtnViewGrid" Content="⊞ Сетка" Style="{StaticResource MagiBtn}"
+                                        Padding="10,4" Margin="0,0,4,0" Click="ViewGrid_Click"/>
+                                <Button x:Name="BtnViewList" Content="☰ Список" Style="{StaticResource MagiBtn}"
+                                        Padding="10,4" Margin="0,0,16,0" Click="ViewList_Click"/>
+
+                                <TextBlock Text="Сортировка:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <ComboBox x:Name="CbSortOrder" Width="160" Height="28" FontSize="12"
+                                          SelectionChanged="SortOrder_Changed">
+                                    <ComboBoxItem Content="по дате" IsSelected="True"/>
+                                    <ComboBoxItem Content="по имени"/>
+                                    <ComboBoxItem Content="по размеру"/>
+                                </ComboBox>
+
+                                <Button Content="⟳ Обновить" Style="{StaticResource MagiBtn}"
+                                        Padding="10,4" Margin="16,0,4,0" Click="RefreshArts_Click"/>
+                                <Button Content="📂 Открыть папку" Style="{StaticResource MagiBtn}"
+                                        Padding="10,4" Margin="0,0,4,0" Click="OpenArtsFolder_Click"/>
+
+                                <!-- Clean menu -->
+                                <Button x:Name="BtnCleanMenu" Content="🗑 Очистить папку ▾" Style="{StaticResource MagiBtn}"
+                                        Padding="10,4" Click="CleanMenu_Click"/>
+                                <Popup x:Name="CleanPopup" StaysOpen="False" PlacementTarget="{Binding ElementName=BtnCleanMenu}"
+                                       Placement="Bottom">
+                                    <Border Background="White" BorderBrush="#C5C5FF" BorderThickness="1" CornerRadius="6" Padding="4">
+                                        <StackPanel>
+                                            <Button Content="Удалить все" Style="{StaticResource MagiBtn}" HorizontalContentAlignment="Left"
+                                                    Padding="12,6" Click="CleanAll_Click"/>
+                                            <Button Content="Удалить опубликованные" Style="{StaticResource MagiBtn}" HorizontalContentAlignment="Left"
+                                                    Padding="12,6" Click="CleanPublished_Click"/>
+                                            <Button Content="Удалить дубликаты" Style="{StaticResource MagiBtn}" HorizontalContentAlignment="Left"
+                                                    Padding="12,6" Click="CleanDuplicates_Click"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Popup>
+                            </StackPanel>
+                        </Grid>
                     </Border>
-                    <Button Grid.Row="2" Grid.Column="1"
-                            Content="Save"
-                            Height="40"
-                            Background="#B5B5D8"
-                            Foreground="White"
-                            FontWeight="Bold"
-                            Click="Button_ChannelLinkSave_Click"/>
+
+                    <!-- Gallery (Grid view) -->
+                    <Border Grid.Row="2" Style="{StaticResource CardBorder}" Padding="8">
+                        <Grid>
+                            <!-- Grid view -->
+                            <ScrollViewer x:Name="GalleryScrollGrid" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="GalleryGrid">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="6" Padding="4" CornerRadius="6" Background="#F8F6FF"
+                                                    BorderBrush="#E0DCFF" BorderThickness="1" Width="160"
+                                                    MouseRightButtonUp="ImageItem_RightClick" Tag="{Binding}">
+                                                <StackPanel>
+                                                    <Border Background="#EDE9FF" CornerRadius="4" Height="130" Margin="0,0,0,6"
+                                                            ClipToBounds="True">
+                                                        <Image Source="{Binding FullPath, Converter={StaticResource ImagePathConverter}}"
+                                                               Stretch="UniformToFill"
+                                                               RenderOptions.BitmapScalingMode="LowQuality"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding DisplayName}" FontSize="11" FontWeight="SemiBold"
+                                                               Foreground="#444" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Tags}" FontSize="10" Foreground="#888"
+                                                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="{Binding StatusText}" FontSize="10" Foreground="{Binding StatusBrush}"
+                                                               Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <!-- List view (hidden by default) -->
+                            <ListView x:Name="GalleryList" Visibility="Collapsed"
+                                      Background="Transparent" BorderThickness="0"
+                                      MouseRightButtonUp="ImageItem_RightClick">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="Имя файла" Width="250" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="Теги" Width="200" DisplayMemberBinding="{Binding Tags}"/>
+                                        <GridViewColumn Header="Тип" Width="80" DisplayMemberBinding="{Binding Type}"/>
+                                        <GridViewColumn Header="Статус" Width="100" DisplayMemberBinding="{Binding StatusText}"/>
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </Grid>
+                    </Border>
+
+                        <!-- Status bar -->
+                    <Border Grid.Row="3" Padding="12,8" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="TbArtsTotal" Text="Всего: 0" FontSize="12" Foreground="#555" Margin="0,0,16,0"/>
+                            <TextBlock x:Name="TbArtsNew" Text="Новых: 0" FontSize="12" Foreground="#555" Margin="0,0,16,0"/>
+                            <TextBlock x:Name="TbArtsPublished" Text="Опубликовано: 0" FontSize="12" Foreground="#555" Margin="0,0,24,0"/>
+                            <TextBlock Text="images.json (метаданные), posted-images.json (статус публикации)"
+                                       FontSize="11" Foreground="#AAA"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
-            </GroupBox>
 
-            <GroupBox Grid.Row="0" Grid.Column="1" Header="Настройки"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,10" MinHeight="175">
-                <StackPanel Margin="8">
-                    <Button Style="{StaticResource MagiButton}" Content="user-settings.json"
-                            Click="Button_Usersettings_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="posting-rules.json"
-                            Click="Button_Postingrules_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                <!-- PAGE 2: Расписание -->
+                <Grid x:Name="PageSchedule" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <GroupBox Grid.Row="0" Grid.Column="2" Header="Аккаунт для постинга"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,0,10" MinHeight="175">
-                <StackPanel Margin="8">
-                    <RadioButton x:Name="Radio_Personal" Content="Личный" FontWeight="Bold" Margin="0,0,0,6"/>
-                    <RadioButton x:Name="Radio_Bot" Content="Бот" FontWeight="Bold"/>
-                </StackPanel>
-            </GroupBox>
+                    <!-- Header -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                        <Ellipse Width="12" Height="12" Fill="#7B6EE7" Margin="0,0,8,0"/>
+                        <TextBlock Text="Расписание" FontSize="18" FontWeight="Bold" Foreground="#444"/>
+                    </StackPanel>
 
-            <!-- ROW 2 -->
-            <GroupBox Grid.Row="1" Grid.Column="0" Header="БД артов"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,10">
-                <StackPanel Margin="8">
-                    <Button Style="{StaticResource MagiButton}" Content="Check-Images"
-                            Click="Button_CheckImages_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="New-Images"
-                            Click="Button_NewImages_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="Post-Images"
-                            Click="Button_PostImages_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                    <!-- Toolbar -->
+                    <Border Grid.Row="1" Padding="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="+ Добавить пост" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                    Click="AddScheduleSlot_Click"/>
+                            <Button Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                    Click="SaveSchedule_Click"/>
+                            <Button Content="Сбросить изменения" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                    Click="ResetSchedule_Click"/>
+                            <Button Content="Импорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                    Click="ImportScheduleJson_Click"/>
+                            <Button Content="Экспорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,16,0"
+                                    Click="ExportScheduleJson_Click"/>
 
-            <GroupBox Grid.Row="1" Grid.Column="1" Header="БД .json"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,10">
-                <StackPanel Margin="8">
-                    <Button Style="{StaticResource MagiButton}" Content="images.json"
-                            Click="Button_ImagesDb_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="posted-images.json"
-                            Click="Button_PostedImagesDb_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="schedule.json"
-                            Click="Button_ScheduleDb_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                            <!-- Filter -->
+                            <TextBlock Text="Фильтр:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="CbScheduleFilter" Width="160" Height="28" FontSize="12"
+                                      SelectionChanged="ScheduleFilter_Changed">
+                                <ComboBoxItem Content="Все" IsSelected="True"/>
+                                <ComboBoxItem Content="Запланированные"/>
+                                <ComboBoxItem Content="Опубликованные"/>
+                                <ComboBoxItem Content="Отменённые"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Border>
 
-            <GroupBox Grid.Row="1" Grid.Column="2" Header="Функции clear"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,0,10">
-                <StackPanel Margin="8">
-                    <Button Style="{StaticResource MagiButton}" Content="images.json"
-                            Click="Button_ClearImages_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="posted-images.json"
-                            Click="Button_ClearPostedImages_Click"/>
-                    <Button Style="{StaticResource MagiButton}" Content="schedule.json"
-                            Click="Button_ClearSchedule_Click"/>
-                    <Button Background="#B5B5D8" Foreground="White" FontWeight="Bold" Height="40"
-                            Content="all clear"
-                            Click="Button_ClearAll_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                    <!-- Main content: table + edit panel -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition x:Name="EditPanelColumn" Width="0"/>
+                        </Grid.ColumnDefinitions>
 
-            <!-- ROW 3 -->
-            <GroupBox Grid.Row="2" Grid.Column="0" Header="FilenameTagger"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,0">
-                <StackPanel Margin="8">
-                    <Button Background="#B5B5D8" Foreground="White" FontWeight="Bold" Height="40"
-                            Content="START"
-                            Click="Button_FilenameTaggerStart_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                        <!-- Schedule table -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,0">
+                            <DataGrid x:Name="ScheduleDataGrid" Style="{StaticResource ScheduleGrid}"
+                                      SelectionChanged="ScheduleRow_Selected">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date}" Width="110"/>
+                                    <DataGridTextColumn Header="Время" Binding="{Binding Time}" Width="80"/>
+                                    <DataGridTextColumn Header="Изображение" Binding="{Binding ImageName}" Width="200"/>
+                                    <DataGridTemplateColumn Header="Статус" Width="100">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusBrush}" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Действия" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Content="✏" Style="{StaticResource MagiBtn}" Padding="6,2" Margin="0,0,4,0"
+                                                            Click="EditSlot_Click" Tag="{Binding}"/>
+                                                    <Button Content="🗑" Style="{StaticResource MagiBtn}" Padding="6,2"
+                                                            Click="DeleteSlot_Click" Tag="{Binding}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
 
-            <GroupBox Grid.Row="2" Grid.Column="1" Header="Auto-post"
-                      Style="{StaticResource MagiGroupBox}"
-                      Margin="0,0,10,0">
-                <StackPanel Margin="8">
-                    <Button Background="#B5B5D8" Foreground="White" FontWeight="Bold" Height="40"
-                            Content="START"
-                            Click="Button_AutoPostStart_Click" Margin="0"/>
-                </StackPanel>
-            </GroupBox>
+                        <!-- Edit panel (right side) -->
+                        <Border Grid.Column="1" x:Name="EditPanel" Style="{StaticResource CardBorder}" Margin="12,0,0,0"
+                                Visibility="Collapsed">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Width="260">
+                                    <TextBlock Text="Редактирование слота" FontSize="14" FontWeight="Bold"
+                                               Foreground="#444" Margin="0,0,0,12"/>
 
-            <!-- Пустая ячейка (нижняя правая) для ровной сетки -->
-            <Border Grid.Row="2" Grid.Column="2" Margin="0,0,0,0" />
-        </Grid>
+                                    <TextBlock Text="Дата" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <DatePicker x:Name="DpSlotDate" Height="30" Margin="0,0,0,10"/>
 
-        <!-- ===================== КОНСОЛЬ С ЛОГАМИ ===================== -->
-        <Grid Grid.Row="2" Margin="0,12,0,0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
+                                    <TextBlock Text="Время" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TbSlotTime" Height="30" Padding="6,4" FontSize="13"
+                                             Background="White" BorderBrush="#C5C5FF" Margin="0,0,0,10"/>
 
-            <TextBlock Grid.Row="0"
-                       Text="Консоль с логами"
-                       HorizontalAlignment="Right"
-                       Margin="0,0,10,4"
-                       FontWeight="Bold"/>
+                                    <TextBlock Text="Изображение" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="TbSlotImage" Height="30" Padding="6,4" FontSize="12"
+                                                 Background="White" BorderBrush="#C5C5FF" IsReadOnly="True"/>
+                                        <Button Grid.Column="1" Content="Выбрать из базы" Style="{StaticResource MagiBtn}"
+                                                Padding="8,4" Margin="4,0,0,0" Click="SelectImageForSlot_Click"/>
+                                    </Grid>
 
-            <Border Grid.Row="1"
-                    BorderBrush="#999" BorderThickness="1">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <TextBox x:Name="LogTextBox"
-                             Background="White"
-                             IsReadOnly="True"
-                             FontFamily="Consolas"
-                             FontSize="12"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             BorderThickness="0"
-                             Height="185"/>
-                </ScrollViewer>
-            </Border>
-        </Grid>
+                                    <TextBlock Text="Подпись" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TbSlotCaption" Height="60" Padding="6,4" FontSize="13"
+                                             Background="White" BorderBrush="#C5C5FF" TextWrapping="Wrap"
+                                             AcceptsReturn="True" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Теги" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TbSlotTags" Height="30" Padding="6,4" FontSize="13"
+                                             Background="White" BorderBrush="#C5C5FF" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Повтор" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="CbSlotRepeat" Height="30" FontSize="13" Margin="0,0,0,16">
+                                        <ComboBoxItem Content="нет" IsSelected="True"/>
+                                        <ComboBoxItem Content="ежедневно"/>
+                                        <ComboBoxItem Content="еженедельно"/>
+                                    </ComboBox>
+
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Content="Сохранить слот" Style="{StaticResource MagiBtn}"
+                                                Padding="12,6" Margin="0,0,6,0" Click="SaveSlot_Click"/>
+                                        <Button Content="Отмена" Style="{StaticResource MagiBtn}"
+                                                Padding="12,6" Background="#E0D8F0" Click="CancelSlotEdit_Click"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+
+                    <!-- Posting rules panel -->
+                    <Border Grid.Row="3" Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Правила постинга" FontSize="14" FontWeight="Bold" Foreground="#444" Margin="0,0,0,10"/>
+
+                            <!-- Active days -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Активные дни:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" Width="120"/>
+                                <CheckBox x:Name="CbMon" Content="Пн" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbTue" Content="Вт" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbWed" Content="Ср" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbThu" Content="Чт" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbFri" Content="Пт" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbSat" Content="Сб" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="CbSun" Content="Вс" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Posts per day -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Посты в день:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
+                                <TextBox x:Name="TbPostsPerDay" Width="50" Height="28" Padding="6,4"
+                                         Background="White" BorderBrush="#C5C5FF" FontSize="13"/>
+                            </StackPanel>
+
+                            <!-- Post times -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Время постов:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
+                                <ItemsControl x:Name="PostTimesPanel">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="White" BorderBrush="#C5C5FF" BorderThickness="1"
+                                                    CornerRadius="4" Margin="0,0,6,0" Padding="8,4">
+                                                <TextBlock Text="{Binding}" FontSize="13"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Content="+ Добавить время" Style="{StaticResource MagiBtn}"
+                                        Padding="8,4" Margin="6,0,0,0" Click="AddPostTime_Click"/>
+                            </StackPanel>
+
+                            <!-- Timezone -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <TextBlock Text="Часовой пояс:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
+                                <ComboBox x:Name="CbRulesTimezone" Width="180" Height="28" FontSize="12">
+                                    <ComboBoxItem Content="Europe/Moscow" IsSelected="True"/>
+                                    <ComboBoxItem Content="Europe/Kiev"/>
+                                    <ComboBoxItem Content="Europe/London"/>
+                                    <ComboBoxItem Content="Asia/Tokyo"/>
+                                    <ComboBoxItem Content="UTC"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Применить правила к расписанию" Style="{StaticResource MagiBtn}"
+                                        Padding="12,6" Margin="0,0,8,0" Click="ApplyRulesToSchedule_Click"/>
+                                <Button Content="Сохранить правила" Style="{StaticResource MagiBtn}"
+                                        Padding="12,6" Click="SavePostingRules_Click"/>
+                            </StackPanel>
+
+                            <TextBlock Text="JSON reference: posting_rules.json (правила), schedule.json (конкретные слоты)"
+                                       FontSize="11" Foreground="#AAA" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

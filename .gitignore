@@ -1,4 +1,5 @@
 .env
+.claude
 .vs/
 .env.local
 *.env
