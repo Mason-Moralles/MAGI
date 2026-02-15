@@ -89,14 +89,15 @@ namespace MAGIAdmin
     {
         public string FileName { get; set; }
         public string FullPath { get; set; }
-        public string Tags { get; set; }
+        public string Tags { get; set; }       // person из images.json
+        public string Caption { get; set; }    // caption из images.json
         public bool IsPublished { get; set; }
         public string Type { get; set; }
         public DateTime? DateAdded { get; set; }
         public long FileSize { get; set; }
         public string FolderSubDir { get; set; } // subdirectory name (Check-Images, New-Images, Post-Images, etc.)
 
-        public string StatusText => IsPublished ? "\u2713 \u043E\u043F\u0443\u0431\u043B." : "";
+        public string StatusText => IsPublished ? "\u2713 \u043E\u043F\u0443\u0431\u043B." : "\u2014";
         public Brush StatusBrush => IsPublished ? Brushes.Green : Brushes.Gray;
         public string DisplayName => FileName?.Length > 25 ? FileName.Substring(0, 22) + "..." : FileName;
 

@@ -1,11 +1,14 @@
 {
   "hashtags": [
-    "rei ayanami",
-    "asuka langaly"
+    "綾波レイ",
+    "asuka langley"
+  ],
+  "negativeHashtags": [
+    "AI-generated"
   ],
   "imagesPerHashtag": 2,
   "downloadPath": "D:\\MAGI-Images\\New-Images",
-  "databasePath": "D:\\MAGI\\data\\json\\parser\\downloaded_images.json",
+  "databasePath": "D:\\MAGI\\data\\json\\parser\\Pinterest_downloaded_images.json",
   "scrollDelayMs": 2000,
   "imageLoadDelayMs": 1000
 }

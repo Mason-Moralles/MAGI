@@ -34,7 +34,7 @@ def get_config_path() -> Path:
 
 
 def get_database_path() -> Path:
-    return get_project_root() / "data" / "json" / "parser" / "downloaded_images.json"
+    return get_project_root() / "data" / "json" / "parser" / "Pinterest_downloaded_images.json"
 
 
 # ════════════════════════════════════════
@@ -458,8 +458,6 @@ def main():
     except Exception as exc:
         log(f"\n✗ Ошибка: {exc}", Colors.RED)
         sys.exit(1)
-
-    input("\nНажмите Enter для выхода...")
 
 
 if __name__ == "__main__":

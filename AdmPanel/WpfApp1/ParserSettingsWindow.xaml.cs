@@ -19,7 +19,7 @@ namespace MAGIAdmin
             InitializeComponent();
 
             _configPath = Path.Combine(projectRoot, "data", "json", "parser", "config.json");
-            _dbPath = Path.Combine(projectRoot, "data", "json", "parser", "downloaded_images.json");
+            _dbPath = Path.Combine(projectRoot, "data", "json", "parser");
 
             TbConfigPath.Text = _configPath;
             TbDbPath.Text = _dbPath;
@@ -48,6 +48,14 @@ namespace MAGIAdmin
                 {
                     TbHashtags.Text = string.Join(Environment.NewLine,
                         hashtags.Select(h => h.ToString()));
+                }
+
+                // Негативные хэштеги для Pixiv
+                var negativeHashtags = json["negativeHashtags"] as JArray;
+                if (negativeHashtags != null)
+                {
+                    TbNegativeHashtags.Text = string.Join(Environment.NewLine,
+                        negativeHashtags.Select(h => h.ToString()));
                 }
             }
             catch { }
@@ -82,6 +90,14 @@ namespace MAGIAdmin
                     .ToArray();
                 json["hashtags"] = new JArray(lines);
 
+                // Негативные хэштеги для Pixiv
+                var negLines = TbNegativeHashtags.Text
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(l => l.Trim())
+                    .Where(l => l.Length > 0)
+                    .ToArray();
+                json["negativeHashtags"] = new JArray(negLines);
+
                 // Числовые поля
                 int val;
                 if (int.TryParse(TbImagesPerHashtag.Text.Trim(), out val))
@@ -95,9 +111,8 @@ namespace MAGIAdmin
                 if (int.TryParse(TbImageDelay.Text.Trim(), out val))
                     json["imageLoadDelayMs"] = val;
 
-                // databasePath — сохраняем как есть, если был
-                if (json["databasePath"] == null)
-                    json["databasePath"] = _dbPath;
+                // databasePath — обновляем на Pinterest формат
+                json["databasePath"] = Path.Combine(_dbPath, "Pinterest_downloaded_images.json");
 
                 // Сохраняем
                 Directory.CreateDirectory(Path.GetDirectoryName(_configPath));

@@ -131,9 +131,9 @@ def load_effective_config(
 
     # db paths из user_settings -> относительно project_root
     db = user.get("db") or {}
-    images_json = (project_root / (db.get("images_json") or "data/images.json")).resolve()
-    posted_images_json = (project_root / (db.get("posted_images_json") or "data/posted_images.json")).resolve()
-    schedule_json = (project_root / (db.get("schedule_json") or "data/schedule.json")).resolve()
+    images_json = (project_root / (db.get("images_json") or "data/json/images/images.json")).resolve()
+    posted_images_json = (project_root / (db.get("posted_images_json") or "data/json/images/posted_images.json")).resolve()
+    schedule_json = (project_root / (db.get("schedule_json") or "data/json/schedule/schedule.json")).resolve()
 
     # telegram
     tg = user.get("telegram") or {}

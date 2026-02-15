@@ -58,7 +58,5 @@ D:\MAGI\AdmPanel\WpfApp1\obj\Debug\MAGIAdmin.g.resources
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\MAGIAdmin.Properties.Resources.resources
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\MAGIAdmin.exe
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\MAGIAdmin.pdb
-D:\MAGI\AdmPanel\WpfApp1\bin\Debug\Newtonsoft.Json.dll
-D:\MAGI\AdmPanel\WpfApp1\bin\Debug\System.Text.Json.dll
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\GeneratedInternalTypeHelper.g.cs
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\MAGIAdmin_MarkupCompile.lref

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
 using Newtonsoft.Json.Linq;
 
 namespace MAGIAdmin
@@ -34,20 +33,6 @@ namespace MAGIAdmin
                     TbBotToken.Text = tg["bot_token"]?.ToString() ?? "";
                 }
 
-                var schedule = json["schedule"] as JObject;
-                if (schedule != null)
-                {
-                    var tz = schedule["time_zone"]?.ToString() ?? "Europe/Moscow";
-                    foreach (ComboBoxItem item in CbTimezone.Items)
-                    {
-                        if (item.Content.ToString() == tz)
-                        {
-                            CbTimezone.SelectedItem = item;
-                            break;
-                        }
-                    }
-                    TbScheduleDays.Text = schedule["schedule_days"]?.ToString() ?? "7";
-                }
             }
             catch { }
         }
@@ -76,15 +61,6 @@ namespace MAGIAdmin
                 tg["bot_token"] = TbBotToken.Text.Trim();
                 json["telegram"] = tg;
 
-                var schedule = json["schedule"] as JObject ?? new JObject();
-                var selectedTz = (CbTimezone.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Europe/Moscow";
-                schedule["time_zone"] = selectedTz;
-
-                int days;
-                if (int.TryParse(TbScheduleDays.Text.Trim(), out days))
-                    schedule["schedule_days"] = days;
-
-                json["schedule"] = schedule;
                 File.WriteAllText(_settingsPath, json.ToString());
 
                 MessageBox.Show("Настройки автопостинга сохранены.", "Сохранено", MessageBoxButton.OK, MessageBoxImage.Information);

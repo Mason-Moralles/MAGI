@@ -1,0 +1,4 @@
+D:\MAGI\AdmPanel\WpfApp1\obj\Release\WpfApp1.csproj.AssemblyReference.cache
+D:\MAGI\AdmPanel\WpfApp1\obj\Release\MAGIAdmin.Properties.Resources.resources
+D:\MAGI\AdmPanel\WpfApp1\obj\Release\WpfApp1.csproj.GenerateResource.cache
+D:\MAGI\AdmPanel\WpfApp1\obj\Release\WpfApp1.csproj.CoreCompileInputs.cache

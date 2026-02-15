@@ -218,8 +218,16 @@
                                     <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="ParserSettings_Click"/>
                                 </Grid>
 
-                                <!-- Account type for parser - not needed, placeholder -->
-                                <Border Grid.Row="2" Background="Transparent" MinHeight="80"/>
+                                <!-- Source selection checkboxes -->
+                                <StackPanel Grid.Row="1" Margin="0,4,0,0">
+                                    <TextBlock Text="Источники:" FontSize="12" Foreground="#666" Margin="0,0,0,4"/>
+                                    <CheckBox x:Name="CbParserPinterest" Content="Pinterest" IsChecked="True"
+                                              Margin="0,0,0,4" FontSize="12" VerticalAlignment="Center"/>
+                                    <CheckBox x:Name="CbParserPixiv" Content="Pixiv"
+                                              Margin="0,0,0,0" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <Border Grid.Row="2" Background="Transparent" MinHeight="20"/>
 
                                 <Button Grid.Row="3" x:Name="BtnParserStart" Content="START" Style="{StaticResource StartBtn}" Click="ParserStart_Click"/>
                             </Grid>
@@ -486,10 +494,10 @@
                                       MouseRightButtonUp="ImageItem_RightClick">
                                 <ListView.View>
                                     <GridView>
-                                        <GridViewColumn Header="Имя файла" Width="250" DisplayMemberBinding="{Binding FileName}"/>
-                                        <GridViewColumn Header="Теги" Width="200" DisplayMemberBinding="{Binding Tags}"/>
-                                        <GridViewColumn Header="Тип" Width="80" DisplayMemberBinding="{Binding Type}"/>
-                                        <GridViewColumn Header="Статус" Width="100" DisplayMemberBinding="{Binding StatusText}"/>
+                                        <GridViewColumn Header="Имя файла" Width="220" DisplayMemberBinding="{Binding FileName}"/>
+                                        <GridViewColumn Header="Персонаж" Width="180" DisplayMemberBinding="{Binding Tags}"/>
+                                        <GridViewColumn Header="Подпись" Width="200" DisplayMemberBinding="{Binding Caption}"/>
+                                        <GridViewColumn Header="Опубликован" Width="110" DisplayMemberBinding="{Binding StatusText}"/>
                                     </GridView>
                                 </ListView.View>
                             </ListView>

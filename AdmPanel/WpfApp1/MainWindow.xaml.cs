@@ -236,11 +236,37 @@ namespace MAGIAdmin
                 return;
             }
 
-            var script = Path.Combine(GetProjectRoot(), "Parser", "PinterestParser.py");
+            bool runPinterest = CbParserPinterest.IsChecked == true;
+            bool runPixiv = CbParserPixiv.IsChecked == true;
+
+            if (!runPinterest && !runPixiv)
+            {
+                AddLog("Parser", "WARN", "Не выбран ни один источник (Pinterest / Pixiv)");
+                return;
+            }
+
             _parserRunning = true;
             SetServiceStatus("Parser", true);
-            AddLog("Parser", "INFO", "Parser started...");
-            _parserProcess = await RunPythonAsync(script, "Parser");
+
+            // Pinterest первый (если оба выбраны)
+            if (runPinterest)
+            {
+                var pinterestScript = Path.Combine(GetProjectRoot(), "Parser", "PinterestParser.py");
+                AddLog("Parser", "INFO", "Pinterest parser started...");
+                _parserProcess = await RunPythonAsync(pinterestScript, "Parser");
+
+                // Проверка — если пользователь остановил процесс
+                if (!_parserRunning) return;
+            }
+
+            // Pixiv вторым
+            if (runPixiv)
+            {
+                var pixivScript = Path.Combine(GetProjectRoot(), "Parser", "PixivParser.py");
+                AddLog("Parser", "INFO", "Pixiv parser started...");
+                _parserProcess = await RunPythonAsync(pixivScript, "Parser");
+            }
+
             _parserRunning = false;
             SetServiceStatus("Parser", false);
         }
@@ -570,10 +596,18 @@ namespace MAGIAdmin
                         var nameNoExt = Path.GetFileNameWithoutExtension(fi.Name);
                         var tags = "";
                         var type = "";
+                        var caption = "";
 
-                        if (imagesDb[nameNoExt] != null)
+                        if (imagesDb[fi.Name] != null)
                         {
-                            tags = imagesDb[nameNoExt]?["tags"]?.ToString() ?? imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
+                            tags = imagesDb[fi.Name]?["person"]?.ToString() ?? "";
+                            caption = imagesDb[fi.Name]?["caption"]?.ToString() ?? "";
+                            type = imagesDb[fi.Name]?["type"]?.ToString() ?? "";
+                        }
+                        else if (imagesDb[nameNoExt] != null)
+                        {
+                            tags = imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
+                            caption = imagesDb[nameNoExt]?["caption"]?.ToString() ?? "";
                             type = imagesDb[nameNoExt]?["type"]?.ToString() ?? "";
                         }
 
@@ -582,6 +616,7 @@ namespace MAGIAdmin
                             FileName = fi.Name,
                             FullPath = fi.FullName,
                             Tags = tags,
+                            Caption = caption,
                             Type = type,
                             IsPublished = postedSet.Contains(nameNoExt),
                             DateAdded = fi.CreationTime,
@@ -603,10 +638,18 @@ namespace MAGIAdmin
                     var nameNoExt = Path.GetFileNameWithoutExtension(fi.Name);
                     var tags = "";
                     var type = "";
+                    var caption = "";
 
-                    if (imagesDb[nameNoExt] != null)
+                    if (imagesDb[fi.Name] != null)
                     {
-                        tags = imagesDb[nameNoExt]?["tags"]?.ToString() ?? imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
+                        tags = imagesDb[fi.Name]?["person"]?.ToString() ?? "";
+                        caption = imagesDb[fi.Name]?["caption"]?.ToString() ?? "";
+                        type = imagesDb[fi.Name]?["type"]?.ToString() ?? "";
+                    }
+                    else if (imagesDb[nameNoExt] != null)
+                    {
+                        tags = imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
+                        caption = imagesDb[nameNoExt]?["caption"]?.ToString() ?? "";
                         type = imagesDb[nameNoExt]?["type"]?.ToString() ?? "";
                     }
 
@@ -615,6 +658,7 @@ namespace MAGIAdmin
                         FileName = fi.Name,
                         FullPath = fi.FullName,
                         Tags = tags,
+                        Caption = caption,
                         Type = type,
                         IsPublished = postedSet.Contains(nameNoExt),
                         DateAdded = fi.CreationTime,
