@@ -1,149 +1,86 @@
-# Admin Panel — Панель управления (WPF C#)
+# Admin Panel — Панель управления
 
-GUI-приложение для управления всеми микросервисами MAGI.
+WPF-приложение (.NET 8) для управления всеми микросервисами MAGI.
 
----
-
-## Файлы
-
-| Файл | Описание |
-|---|---|
-| `AdmPanel\WpfApp1\MainWindow.xaml` | Главное окно (XAML разметка) |
-| `AdmPanel\WpfApp1\MainWindow.xaml.cs` | Code-behind главного окна |
-| `AdmPanel\WpfApp1\Models.cs` | Модели данных: `ImageItem`, `ScheduleSlot`, `LogEntry` |
-| `AdmPanel\WpfApp1\ParserSettingsWindow.xaml` | Окно настроек парсера (XAML) |
-| `AdmPanel\WpfApp1\ParserSettingsWindow.xaml.cs` | Code-behind настроек парсера |
-| `AdmPanel\WpfApp1\TaggerSettingsWindow.xaml` | Окно настроек теггера (XAML) |
-| `AdmPanel\WpfApp1\TaggerSettingsWindow.xaml.cs` | Code-behind настроек теггера |
-| `AdmPanel\WpfApp1\AutopostSettingsWindow.xaml` | Окно настроек автопостинга (XAML) |
-| `AdmPanel\WpfApp1\AutopostSettingsWindow.xaml.cs` | Code-behind настроек автопостинга |
+**Сборка:**
+```bash
+dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
+# exe: AdmPanel/WpfApp1/bin/Debug/net8.0-windows/MAGIAdmin.exe
+```
 
 ---
 
-## Вкладки главного окна
+## Вкладки
 
-### Вкладка 0: Микросервисы
+### ⚙ Микросервисы
 
-Три блока-карточки: **Parser**, **Tagger**, **Auto-post**.
+Запуск и остановка Python-скриптов. Вывод (stdout/stderr) отображается в консоли логов.
 
-Каждый блок содержит:
-- Статус (серый/зелёный индикатор + текст `Status: Stopped / Running`)
-- Кнопку ⚙ (открывает окно настроек)
-- Кнопку `START / STOP`
+| Сервис | Скрипт | Настройки (кнопка ⚙) | Читает конфиг |
+|---|---|---|---|
+| Parser Pinterest | `Parser/PinterestParser.py` | `ParserSettingsWindow` | `data/json/Parser/config.json` |
+| Parser Pixiv | `Parser/PixivParser.py` | `ParserSettingsWindow` | `data/json/Parser/config.json` |
+| Tagger | `FilenameTagger/FilenameTagger.py` | `TaggerSettingsWindow` | `user_settings.json["tagger"]` |
+| Auto-post | `Auto-post/Auto-post.py` | `AutopostSettingsWindow` | `user_settings.json["telegram"]` |
 
-**Что читает при старте каждого сервиса:**
-
-| Сервис | Запускает Python-скрипт |
-|---|---|
-| Parser (Pinterest) | `Parser/PinterestParser.py` |
-| Parser (Pixiv) | `Parser/PixivParser.py` |
-| Tagger | `FilenameTagger/FilenameTagger.py` |
-| Auto-post | `Auto-post/Auto-post.py` |
-
-Вывод Python-скриптов (stdout/stderr) отображается в **Консоли логов** в нижней части вкладки.
+> Путь к Python захардкожен в `MainWindow.xaml.cs → GetPythonExe()`. При переносе на другую машину изменить вручную.
 
 ---
 
-### Вкладка 1: База артов
+### 📁 База артов
 
-Отображает все изображения из `arts_root` с метаданными из `images.json`.
+Галерея всех изображений из `arts_root` с метаданными.
 
-**Что читает при открытии вкладки (`LoadArtsGallery`):**
-
-| Источник | Ключ в user_settings.json | Что берёт |
-|---|---|---|
-| `arts_root` (папки) | `paths.arts_root` | Сканирует `New-Images`, `Check-Images`, `Post-Images` и другие подпапки |
-| `data/json/images/images.json` | `db.images_json` | `person` → колонка «Персонаж», `caption` → колонка «Подпись» |
-| `data/json/images/posted_images.json` | `db.posted_images_json` | Метка «Опубликован» |
+**Читает:**
+- Файлы из `New-Images`, `Check-Images`, `Post-Images` и других подпапок `arts_root`
+- `images.json` → поля `person` (колонка «Персонаж») и `caption` (колонка «Подпись»)
+- `posted_images.json` → метка «Опубликован»
 
 **Режимы отображения:**
-- **⊞ Сетка** — превью изображений плитками
-- **☰ Список** — таблица с колонками:
+- **⊞ Сетка** — превью плитками
+- **☰ Список** — таблица: Имя файла / Персонаж / Подпись / Опубликован
 
-| Колонка | Источник поля | JSON-ключ |
-|---|---|---|
-| Имя файла | `ImageItem.FileName` | — |
-| Персонаж | `ImageItem.Tags` | `images.json[filename]["person"]` |
-| Подпись | `ImageItem.Caption` | `images.json[filename]["caption"]` |
-| Опубликован | `ImageItem.StatusText` | `posted_images.json[filename]` (есть/нет) |
+**Фильтры:** вкладки папок, поиск по имени, сортировка по дате / имени / размеру
 
-**Фильтрация и сортировка:**
-- Вкладки папок (Все / New-Images / Check-Images / Post-Images / Корень)
-- Поиск по имени файла
-- Сортировка: по дате / по имени / по размеру
+**Контекстное меню (ПКМ на изображении):** Открыть · Удалить · Пометить опубликованным · Копировать путь
 
-**Контекстное меню (правая кнопка на изображении):**
-- Открыть — открывает файл через системный просмотрщик
-- Удалить — удаляет файл с диска
-- Пометить опубликованным — записывает в `posted_images.json`
-- Копировать путь — в буфер обмена
-
-**Кнопки очистки:**
-- Удалить все — удаляет все видимые файлы
-- Удалить опубликованные — удаляет только с `IsPublished == true`
+**Очистка:** удалить все видимые / удалить опубликованные
 
 ---
 
-### Вкладка 2: Расписание
+### 📅 Расписание
 
-Управление расписанием публикаций.
+Управление расписанием публикаций и правилами постинга.
 
-**Что читает при открытии:**
+**Читает/пишет:** `data/json/schedule.json`, `%APPDATA%\MAGI\posting_rules.json`
 
-| Источник | Ключ в user_settings.json | Что берёт |
-|---|---|---|
-| `data/json/schedule.json` | `db.schedule_json` | Все слоты расписания |
-| `%APPDATA%\MAGI\posting_rules.json` | — | Дни недели, времена, правила |
-
-**Таблица слотов (ScheduleDataGrid):**
-
-| Колонка | Источник | JSON-ключ |
-|---|---|---|
-| Дата | `ScheduleSlot.Date` | `schedule.json[slot]["date"]` |
-| Время | `ScheduleSlot.Time` | `schedule.json[slot]["time"]` |
-| Изображение | `ScheduleSlot.ImageName` | `schedule.json[slot]["image"]` |
-| Статус | `ScheduleSlot.StatusText` | `schedule.json[slot]["status"]` |
-
-**Действия:**
-- **Добавить слот** — создаёт новую пустую запись
-- **Изменить** (кнопка в строке) — открывает правую панель редактирования
-- **Удалить** (кнопка в строке) — удаляет слот из памяти
-- **Сохранить** — записывает `schedule.json`
-- **Применить правила** — генерирует слоты по `posting_rules.json`, пишет `schedule.json`
-- **Сохранить правила** — записывает `posting_rules.json`
-
-**Секция правил постинга (левая часть):**
-
-| Элемент UI | Записывает в |
+| Действие | Результат |
 |---|---|
-| Чекбоксы Пн–Вс | `posting_rules.json["week_template"]` (ключи дней) |
-| Список времён | `posting_rules.json["week_template"][day]` (массив времён) |
-| Кнопка Add time | Добавляет время в список |
+| Добавить / Изменить / Удалить слот | Редактирование `schedule.json` в памяти |
+| Сохранить | Запись `schedule.json` на диск |
+| Применить правила | Генерация слотов по `posting_rules.json` |
+| Сохранить правила | Запись `posting_rules.json` (дни, времена) |
+
+> Часовой пояс и «Планировать дней» сохраняются в `user_settings.json["schedule"]` со страницы Расписание — **не** в окне AutopostSettings.
 
 ---
 
 ## Окна настроек
 
-### ParserSettingsWindow — настройки парсера
-
-**Читает:** `data/json/Parser/config.json`
-**Пишет:** `data/json/Parser/config.json`
+### ParserSettingsWindow
+**Файл:** `data/json/Parser/config.json`
 
 | Поле | JSON-ключ |
 |---|---|
 | Путь загрузки | `downloadPath` |
-| Хэштеги | `hashtags` (массив) |
-| Негативные хэштеги (Pixiv) | `negativeHashtags` (массив) |
+| Хэштеги | `hashtags` |
+| Негативные хэштеги (только Pixiv) | `negativeHashtags` |
 | Изображений на хэштег | `imagesPerHashtag` |
 | Задержка прокрутки (мс) | `scrollDelayMs` |
 | Задержка загрузки (мс) | `imageLoadDelayMs` |
 
----
-
-### TaggerSettingsWindow — настройки теггера
-
-**Читает:** `%APPDATA%\MAGI\user_settings.json`
-**Пишет:** `%APPDATA%\MAGI\user_settings.json`
+### TaggerSettingsWindow
+**Файл:** `%APPDATA%\MAGI\user_settings.json` → секция `tagger`
 
 | Поле | JSON-ключ |
 |---|---|
@@ -152,12 +89,10 @@ GUI-приложение для управления всеми микросер
 | Только новые | `tagger.only_new` |
 | Режим (rename/copy) | `tagger.mode` |
 
----
+> Эти поля в текущей версии `FilenameTagger.py` не используются — он работает только через `filename_tags.json`.
 
-### AutopostSettingsWindow — настройки Telegram
-
-**Читает:** `%APPDATA%\MAGI\user_settings.json`
-**Пишет:** `%APPDATA%\MAGI\user_settings.json` (только секция `telegram`)
+### AutopostSettingsWindow
+**Файл:** `%APPDATA%\MAGI\user_settings.json` → секция `telegram`
 
 | Поле | JSON-ключ |
 |---|---|
@@ -167,14 +102,15 @@ GUI-приложение для управления всеми микросер
 | Session file | `telegram.session_file` |
 | Bot Token | `telegram.bot_token` |
 
-> Часовой пояс и «Планировать дней» редактируются **только на вкладке «Расписание»** (сохраняются в `user_settings.json["schedule"]`).
-
 ---
 
-## Где хранится путь Python
+## Файлы проекта
 
-В `MainWindow.xaml.cs`, метод `GetPythonExe()`:
-```csharp
-return @"C:\Users\Георгий\AppData\Local\Programs\Python\Python313\python.exe";
-```
-Захардкожено. При переносе на другую машину нужно изменить вручную.
+| Файл | Описание |
+|---|---|
+| `WpfApp1.csproj` | SDK-style .NET 8, NuGet: `Newtonsoft.Json 13.0.3` |
+| `MainWindow.xaml / .cs` | Главное окно, навигация, запуск процессов |
+| `Models.cs` | `ImageItem`, `ScheduleSlot`, `LogEntry` |
+| `ParserSettingsWindow.xaml / .cs` | Настройки парсера |
+| `TaggerSettingsWindow.xaml / .cs` | Настройки теггера |
+| `AutopostSettingsWindow.xaml / .cs` | Настройки Telegram |
