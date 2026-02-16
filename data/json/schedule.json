@@ -1,62 +1,226 @@
 {
-  "2026-02-14T19:59:00+03:00": {
-    "file": "Asuka.jpg",
-    "caption": "",
-    "person": "#Asuka_Langley"
+  "2026-02-16T07:29:00+03:00": {
+    "date": "2026-02-16",
+    "time": "07:29",
+    "status": "scheduled",
+    "file": "asuka_langley_0001.jpg",
+    "person": "#Asuka_Langley",
+    "caption": "Доброе утро!"
   },
-  "2026-02-15T21:59:00+03:00": {
-    "file": "Ayanami_Rei.jpg",
-    "caption": "",
-    "person": "#Rei_Ayanami"
-  },
-  "2026-02-16T23:29:00+03:00": {
-    "file": "asuka_langaly_0001.jpg",
-    "caption": "",
-    "person": "#Asuka_Langley"
-  },
-  "2026-02-17T06:59:00+03:00": {
-    "file": "rei_ayanami_0001.jpg",
-    "caption": "",
-    "person": "#Rei_Ayanami"
-  },
-  "2026-02-15T19:59:00+03:00": {
-    "file": "asuka_langley_0001.png",
-    "caption": "",
-    "person": "#Asuka_Langley"
+  "2026-02-16T19:59:00+03:00": {
+    "date": "2026-02-16",
+    "time": "19:59",
+    "status": "scheduled",
+    "file": "綾波レイ_0001.jpg",
+    "person": "#Rei_Ayanami",
+    "caption": ""
   },
   "2026-02-16T21:59:00+03:00": {
-    "file": "綾波レイ_0001.png",
-    "caption": "",
-    "person": "#Rei_Ayanami"
+    "date": "2026-02-16",
+    "time": "21:59",
+    "status": "scheduled",
+    "file": "asuka_langley_0002.jpg",
+    "person": "#Asuka_Langley",
+    "caption": ""
+  },
+  "2026-02-16T23:29:00+03:00": {
+    "date": "2026-02-16",
+    "time": "23:29",
+    "status": "scheduled",
+    "file": "綾波レイ_0002.jpg",
+    "person": "#Rei_Ayanami",
+    "caption": "Доброй ночи"
+  },
+  "2026-02-17T07:29:00+03:00": {
+    "date": "2026-02-17",
+    "time": "07:29",
+    "status": "scheduled",
+    "file": "asuka_langley_0003.png",
+    "person": "#Asuka_Langley",
+    "caption": "Доброе утро!"
+  },
+  "2026-02-17T19:59:00+03:00": {
+    "date": "2026-02-17",
+    "time": "19:59",
+    "status": "scheduled",
+    "file": "綾波レイ_0003.png",
+    "person": "#Rei_Ayanami",
+    "caption": ""
+  },
+  "2026-02-17T21:59:00+03:00": {
+    "date": "2026-02-17",
+    "time": "21:59",
+    "status": "scheduled",
+    "file": "asuka_langley_0004.png",
+    "person": "#Asuka_Langley",
+    "caption": ""
   },
   "2026-02-17T23:29:00+03:00": {
-    "file": "asuka_langley_0002.jpg",
-    "caption": "",
-    "person": "#Asuka_Langley"
+    "date": "2026-02-17",
+    "time": "23:29",
+    "status": "scheduled",
+    "file": "綾波レイ_0004.jpg",
+    "person": "#Rei_Ayanami",
+    "caption": "Доброй ночи"
   },
-  "2026-02-18T06:59:00+03:00": {
-    "file": "綾波レイ_0002.jpg",
-    "caption": "",
-    "person": "#Rei_Ayanami"
+  "2026-02-18T07:29:00+03:00": {
+    "date": "2026-02-18",
+    "time": "07:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброе утро!"
   },
-  "2026-02-19T07:59:00+03:00": {
-    "file": "asuka_langley_0003.jpg",
-    "caption": "",
-    "person": "#Asuka_Langley"
+  "2026-02-18T19:59:00+03:00": {
+    "date": "2026-02-18",
+    "time": "19:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-18T21:59:00+03:00": {
+    "date": "2026-02-18",
+    "time": "21:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-18T23:29:00+03:00": {
+    "date": "2026-02-18",
+    "time": "23:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброй ночи"
+  },
+  "2026-02-19T07:29:00+03:00": {
+    "date": "2026-02-19",
+    "time": "07:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброе утро!"
+  },
+  "2026-02-19T19:59:00+03:00": {
+    "date": "2026-02-19",
+    "time": "19:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-19T21:59:00+03:00": {
+    "date": "2026-02-19",
+    "time": "21:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-19T23:29:00+03:00": {
+    "date": "2026-02-19",
+    "time": "23:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброй ночи"
+  },
+  "2026-02-20T07:29:00+03:00": {
+    "date": "2026-02-20",
+    "time": "07:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброе утро!"
   },
   "2026-02-20T19:59:00+03:00": {
-    "file": "綾波レイ_0003.jpg",
-    "caption": "",
-    "person": "#Rei_Ayanami"
+    "date": "2026-02-20",
+    "time": "19:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-20T21:59:00+03:00": {
+    "date": "2026-02-20",
+    "time": "21:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-20T23:29:00+03:00": {
+    "date": "2026-02-20",
+    "time": "23:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброй ночи"
+  },
+  "2026-02-21T08:59:00+03:00": {
+    "date": "2026-02-21",
+    "time": "08:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Шабат шалом!"
+  },
+  "2026-02-21T19:59:00+03:00": {
+    "date": "2026-02-21",
+    "time": "19:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
   },
   "2026-02-21T21:59:00+03:00": {
-    "file": "asuka_langley_0004.png",
-    "caption": "",
-    "person": "#Asuka_Langley"
+    "date": "2026-02-21",
+    "time": "21:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-21T23:29:00+03:00": {
+    "date": "2026-02-21",
+    "time": "23:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброй ночи"
+  },
+  "2026-02-22T08:59:00+03:00": {
+    "date": "2026-02-22",
+    "time": "08:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброе утро!"
+  },
+  "2026-02-22T19:59:00+03:00": {
+    "date": "2026-02-22",
+    "time": "19:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
+  },
+  "2026-02-22T21:59:00+03:00": {
+    "date": "2026-02-22",
+    "time": "21:59",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": ""
   },
   "2026-02-22T23:29:00+03:00": {
-    "file": "綾波レイ_0004.jpg",
-    "caption": "",
-    "person": "#Rei_Ayanami"
+    "date": "2026-02-22",
+    "time": "23:29",
+    "status": "pending",
+    "file": null,
+    "person": null,
+    "caption": "Доброй ночи"
   }
 }

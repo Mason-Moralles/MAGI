@@ -29,10 +29,8 @@
 ```json
 {
   "asuka_langley_0001.jpg": {
-    "person":    "#Asuka_Langley",
-    "posted":    0,
-    "post_time": null,
-    "caption":   ""
+    "person": "#Asuka_Langley",
+    "posted": 0
   }
 }
 ```
@@ -40,14 +38,12 @@
 | Поле | Тип | Кто пишет | Описание |
 |---|---|---|---|
 | `person` | string | FilenameTagger | Хэштег персонажа (`#Name`) |
-| `posted` | int (0/1) | Auto-post | 0 = ожидает, 1 = запланировано |
-| `post_time` | string/null | Auto-post | ISO datetime публикации |
-| `caption` | string | Auto-post | Подпись к посту |
+| `posted` | int (0/1) | — | 0 = ожидает публикации (всегда 0, запись удаляется после планирования) |
 
 **Жизненный цикл записи:**
-1. FilenameTagger создаёт запись (`posted: 0, post_time: null, caption: ""`)
-2. Auto-post обновляет (`posted: 1, post_time: "...", caption: "..."`) и **удаляет из файла**
-3. Запись переходит в `posted_images.json`
+1. FilenameTagger создаёт запись (`person: "#Tag", posted: 0`)
+2. Auto-post берёт арт, **удаляет** запись из файла
+3. Запись с деталями публикации переходит в `posted_images.json`
 
 ---
 
@@ -60,14 +56,17 @@
 {
   "asuka_langley_0001.jpg": {
     "person":    "#Asuka_Langley",
-    "posted":    1,
-    "post_time": "2026-02-14T19:59:00+03:00",
-    "caption":   "Обедай с вайфу ☀️"
+    "posted_at": "2026-02-14T19:59:00+03:00",
+    "caption":   "Вечерний арт 🌙"
   }
 }
 ```
 
-Структура идентична `images.json`, но здесь только опубликованные записи (`posted: 1`).
+| Поле | Тип | Кто пишет | Описание |
+|---|---|---|---|
+| `person` | string | Auto-post | Хэштег персонажа |
+| `posted_at` | string (ISO) | Auto-post | Время публикации со смещением часового пояса |
+| `caption` | string | Auto-post | Подпись к посту |
 
 Также AdminPanel через «Пометить опубликованным» может записать:
 ```json
@@ -89,20 +88,69 @@
 ```json
 {
   "2026-02-14T19:59:00+03:00": {
+    "date":    "2026-02-14",
+    "time":    "19:59",
+    "status":  "scheduled",
     "file":    "asuka_langley_0001.jpg",
-    "caption": "Обедай с вайфу ☀️",
-    "person":  "#Asuka_Langley"
+    "person":  "#Asuka_Langley",
+    "caption": "Вечерний арт 🌙"
+  },
+  "2026-02-15T07:29:00+03:00": {
+    "date":    "2026-02-15",
+    "time":    "07:29",
+    "status":  "pending",
+    "file":    "",
+    "person":  "",
+    "caption": ""
   }
 }
 ```
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `file` | string | Имя файла арта |
-| `caption` | string | Подпись поста |
-| `person` | string | Хэштег персонажа |
+| `date` | string | Дата `"YYYY-MM-DD"` |
+| `time` | string | Время `"HH:MM"` |
+| `status` | string | `pending` / `scheduled` / `posted` / `missed` / `error` |
+| `file` | string | Имя файла арта (пусто пока `pending`) |
+| `person` | string | Хэштег персонажа (пусто пока `pending`) |
+| `caption` | string | Подпись поста (пусто пока `pending`) |
 
-> **Примечание:** AdminPanel на вкладке «Расписание» хранит слоты в другом формате (с полями `date`, `time`, `image`, `status`, `tags`, `repeat`). Это отдельная структура для UI — Auto-post читает только ISO-datetime формат выше.
+### Жизненный цикл слота
+
+```
+pending  ──(Auto-post привязывает арт)──►  scheduled  ──(публикация)──►  posted
+  │
+  └──(время прошло, арт не привязан)──►  missed
+```
+
+---
+
+## posting_rules.json
+
+**Путь:** `%APPDATA%\MAGI\posting_rules.json`
+**Читают:** Auto-post (config_loader), AdminPanel (вкладка Расписание)
+**Пишет:** AdminPanel → вкладка Расписание → «Сохранить правила»
+
+```json
+{
+  "version": 2,
+  "rules": [
+    { "time": "07:29", "days": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "caption": "Доброе утро!" },
+    { "time": "19:59", "days": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "caption": "" },
+    { "time": "08:59", "days": ["Saturday"], "caption": "Шабат шалом!" },
+    { "time": "08:59", "days": ["Sunday"],   "caption": "Доброе утро!" }
+  ]
+}
+```
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `version` | int | Версия формата (текущая: 2) |
+| `rules[].time` | string | Время публикации `"HH:MM"` |
+| `rules[].days` | array[string] | Дни недели на английском (Monday … Sunday) |
+| `rules[].caption` | string | Подпись к посту (может быть пустой) |
+
+> Одно и то же время может встречаться в нескольких правилах с разными днями — для задания разных подписей.
 
 ---
 
@@ -130,7 +178,6 @@
 | `negativeHashtags` | array[string] | Только Pixiv: арты с этими тегами пропускаются |
 | `imagesPerHashtag` | int | Максимум скачиваний на хэштег за сессию |
 | `downloadPath` | string | Абсолютный путь куда скачивать |
-| `databasePath` | string | Путь к БД скачанных (устаревший, парсеры используют свои пути) |
 | `scrollDelayMs` | int | Задержка между прокрутками страницы (мс) |
 | `imageLoadDelayMs` | int | Задержка между скачиваниями (мс) |
 
@@ -260,37 +307,3 @@
 | `schedule.schedule_days` | Auto-post | AdminPanel → вкладка Расписание |
 | `tagger.*` | Не используется FilenameTagger.py | AdminPanel → ⚙ Tagger |
 | `parser.*` | Не используется парсерами | AdminPanel → ⚙ Parser (не сохраняется) |
-
----
-
-## %APPDATA%\MAGI\posting_rules.json
-
-**Читают:** Auto-post (config_loader), AdminPanel (вкладка Расписание)
-**Пишет:** AdminPanel → вкладка Расписание → «Сохранить правила»
-
-```json
-{
-  "version": 1,
-  "week_template": {
-    "Monday":    ["13:00", "19:00"],
-    "Wednesday": ["13:00"],
-    "Friday":    ["21:00"]
-  },
-  "captions_by_time": {
-    "13:00": "Обедай с вайфу ☀️"
-  },
-  "forced_posts": [
-    { "day": "Monday", "time": "13:00", "tag": "#Rei_Ayanami" }
-  ],
-  "forced_captions": [
-    { "day": "Friday", "time": "21:00", "caption": "Пятница! 🎉" }
-  ]
-}
-```
-
-| Поле | Описание |
-|---|---|
-| `week_template` | Дни и времена публикаций |
-| `captions_by_time` | Подпись по умолчанию для конкретного времени |
-| `forced_posts` | Принудительный персонаж в конкретный день/время |
-| `forced_captions` | Принудительная подпись в конкретный день/время |

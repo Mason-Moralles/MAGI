@@ -538,22 +538,10 @@
                                     Click="AddScheduleSlot_Click"/>
                             <Button Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="SaveSchedule_Click"/>
-                            <Button Content="Сбросить изменения" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
-                                    Click="ResetSchedule_Click"/>
                             <Button Content="Импорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="ImportScheduleJson_Click"/>
-                            <Button Content="Экспорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,16,0"
+                            <Button Content="Экспорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="ExportScheduleJson_Click"/>
-
-                            <!-- Filter -->
-                            <TextBlock Text="Фильтр:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <ComboBox x:Name="CbScheduleFilter" Width="160" Height="28" FontSize="12"
-                                      SelectionChanged="ScheduleFilter_Changed">
-                                <ComboBoxItem Content="Все" IsSelected="True"/>
-                                <ComboBoxItem Content="Запланированные"/>
-                                <ComboBoxItem Content="Опубликованные"/>
-                                <ComboBoxItem Content="Отменённые"/>
-                            </ComboBox>
                         </StackPanel>
                     </Border>
 
@@ -569,19 +557,11 @@
                             <DataGrid x:Name="ScheduleDataGrid" Style="{StaticResource ScheduleGrid}"
                                       SelectionChanged="ScheduleRow_Selected">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Дата" Binding="{Binding Date}" Width="110"/>
-                                    <DataGridTextColumn Header="Время" Binding="{Binding Time}" Width="80"/>
+                                    <DataGridTextColumn Header="Дата"        Binding="{Binding Date}"        Width="110"/>
+                                    <DataGridTextColumn Header="День недели" Binding="{Binding DayOfWeek}"   Width="100"/>
+                                    <DataGridTextColumn Header="Время"       Binding="{Binding Time}"        Width="80"/>
                                     <DataGridTextColumn Header="Изображение" Binding="{Binding ImageName}" Width="200"/>
-                                    <DataGridTemplateColumn Header="Статус" Width="100">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusBrush}" Margin="0,0,4,0"/>
-                                                    <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Подпись" Binding="{Binding Caption}" Width="*"/>
                                     <DataGridTemplateColumn Header="Действия" Width="120">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -655,59 +635,68 @@
                     <!-- Posting rules panel -->
                     <Border Grid.Row="3" Style="{StaticResource CardBorder}" Margin="0,12,0,0">
                         <StackPanel>
-                            <TextBlock Text="Правила постинга" FontSize="14" FontWeight="Bold" Foreground="#444" Margin="0,0,0,10"/>
-
-                            <!-- Active days -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="Активные дни:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0" Width="120"/>
-                                <CheckBox x:Name="CbMon" Content="Пн" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbTue" Content="Вт" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbWed" Content="Ср" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbThu" Content="Чт" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbFri" Content="Пт" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbSat" Content="Сб" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="CbSun" Content="Вс" VerticalAlignment="Center"/>
-                            </StackPanel>
-
-                            <!-- Posts per day -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="Посты в день:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
-                                <TextBox x:Name="TbPostsPerDay" Width="50" Height="28" Padding="6,4"
-                                         Background="White" BorderBrush="#C5C5FF" FontSize="13"/>
-                            </StackPanel>
-
-                            <!-- Post times -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                <TextBlock Text="Время постов:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
-                                <ItemsControl x:Name="PostTimesPanel">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="White" BorderBrush="#C5C5FF" BorderThickness="1"
-                                                    CornerRadius="4" Margin="0,0,6,0" Padding="8,4">
-                                                <TextBlock Text="{Binding}" FontSize="13"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBlock Text="Правила постинга" FontSize="14" FontWeight="Bold" Foreground="#444"
+                                           VerticalAlignment="Center" Margin="0,0,12,0"/>
                                 <Button Content="+ Добавить время" Style="{StaticResource MagiBtn}"
-                                        Padding="8,4" Margin="6,0,0,0" Click="AddPostTime_Click"/>
+                                        Padding="8,4" Click="AddPostTime_Click"/>
                             </StackPanel>
 
-                            <!-- Timezone -->
+                            <!-- Rules grid: each row = one rule (time + days + caption) -->
+                            <DataGrid x:Name="PostTimesGrid"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserResizeRows="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      Background="White"
+                                      BorderBrush="#C5C5FF"
+                                      BorderThickness="1"
+                                      RowBackground="White"
+                                      AlternatingRowBackground="#F8F8FF"
+                                      FontSize="13"
+                                      MaxHeight="220"
+                                      SelectionMode="Single"
+                                      Margin="0,0,0,10">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Время"   Binding="{Binding Time}"           Width="80"  IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Дни"     Binding="{Binding DaysDisplay}"    Width="150" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Подпись" Binding="{Binding CaptionDisplay}" Width="*"   IsReadOnly="True"/>
+                                    <DataGridTemplateColumn Header="Действия" Width="76">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Content="✏" Style="{StaticResource MagiBtn}"
+                                                            Padding="5,2" Margin="0,0,4,0"
+                                                            Tag="{Binding}"
+                                                            Click="EditPostTime_Click"/>
+                                                    <Button Content="🗑" Style="{StaticResource MagiBtn}"
+                                                            Padding="5,2"
+                                                            Tag="{Binding}"
+                                                            Click="DeletePostTime_Click"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Timezone + schedule_days -->
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                 <TextBlock Text="Часовой пояс:" FontWeight="SemiBold" VerticalAlignment="Center" Width="120"/>
-                                <ComboBox x:Name="CbRulesTimezone" Width="180" Height="28" FontSize="12">
+                                <ComboBox x:Name="CbRulesTimezone" Width="160" Height="28" FontSize="12" Margin="0,0,24,0">
                                     <ComboBoxItem Content="Europe/Moscow" IsSelected="True"/>
-                                    <ComboBoxItem Content="Europe/Kiev"/>
                                     <ComboBoxItem Content="Europe/London"/>
                                     <ComboBoxItem Content="Asia/Tokyo"/>
                                     <ComboBoxItem Content="UTC"/>
                                 </ComboBox>
+                                <TextBlock Text="Дней расписания:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBox x:Name="TbScheduleDaysRules" Width="50" Height="28"
+                                         Padding="6,4" FontSize="13"
+                                         Background="White" BorderBrush="#C5C5FF"
+                                         ToolTip="Кол-во дней при генерации расписания (schedule_days)"
+                                         TextChanged="ScheduleDays_TextChanged"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

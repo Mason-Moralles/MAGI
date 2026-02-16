@@ -33,12 +33,12 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 
 **Читает:**
 - Файлы из `New-Images`, `Check-Images`, `Post-Images` и других подпапок `arts_root`
-- `images.json` → поля `person` (колонка «Персонаж») и `caption` (колонка «Подпись»)
+- `images.json` → поле `person` (колонка «Персонаж»)
 - `posted_images.json` → метка «Опубликован»
 
 **Режимы отображения:**
 - **⊞ Сетка** — превью плитками
-- **☰ Список** — таблица: Имя файла / Персонаж / Подпись / Опубликован
+- **☰ Список** — таблица: Имя файла / Персонаж / Опубликован
 
 **Фильтры:** вкладки папок, поиск по имени, сортировка по дате / имени / размеру
 
@@ -54,14 +54,34 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 
 **Читает/пишет:** `data/json/schedule.json`, `%APPDATA%\MAGI\posting_rules.json`
 
+#### Таблица расписания
+
+Столбцы: **Дата · День недели · Время · Изображение · Персонаж · Подпись**
+
 | Действие | Результат |
 |---|---|
 | Добавить / Изменить / Удалить слот | Редактирование `schedule.json` в памяти |
 | Сохранить | Запись `schedule.json` на диск |
-| Применить правила | Генерация слотов по `posting_rules.json` |
-| Сохранить правила | Запись `posting_rules.json` (дни, времена) |
+| Применить правила | Генерация `pending`-слотов по `posting_rules.json` (защищает `scheduled`/`posted` слоты) |
 
-> Часовой пояс и «Планировать дней» сохраняются в `user_settings.json["schedule"]` со страницы Расписание — **не** в окне AutopostSettings.
+#### Параметры расписания
+
+Находятся над таблицей:
+- **Часовой пояс** — сохраняется в `user_settings.json["schedule"]["time_zone"]`
+- **Планировать дней** — сохраняется в `user_settings.json["schedule"]["schedule_days"]`
+
+#### Панель правил постинга
+
+Нижняя часть вкладки. Редактирует `posting_rules.json` (формат v2 — массив `rules[]`):
+
+| Действие | Результат |
+|---|---|
+| **+ Добавить время** | Открывает диалог: время, дни недели (чекбоксы Пн–Вс), подпись |
+| Изменить правило | Редактирование выбранного правила |
+| Удалить правило | Удаление из списка |
+| Сохранить правила | Запись `posting_rules.json` на диск |
+
+> Одно время можно добавить несколько раз с разными наборами дней — для разных подписей в разные дни недели.
 
 ---
 
@@ -102,6 +122,8 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 | Session file | `telegram.session_file` |
 | Bot Token | `telegram.bot_token` |
 
+> **Часовой пояс** и **Планировать дней** редактируются только на вкладке «Расписание», не здесь.
+
 ---
 
 ## Файлы проекта
@@ -110,7 +132,7 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 |---|---|
 | `WpfApp1.csproj` | SDK-style .NET 8, NuGet: `Newtonsoft.Json 13.0.3` |
 | `MainWindow.xaml / .cs` | Главное окно, навигация, запуск процессов |
-| `Models.cs` | `ImageItem`, `ScheduleSlot`, `LogEntry` |
+| `Models.cs` | `ImageItem`, `ScheduleSlot`, `PostTimeEntry`, `LogEntry` |
 | `ParserSettingsWindow.xaml / .cs` | Настройки парсера |
 | `TaggerSettingsWindow.xaml / .cs` | Настройки теггера |
 | `AutopostSettingsWindow.xaml / .cs` | Настройки Telegram |

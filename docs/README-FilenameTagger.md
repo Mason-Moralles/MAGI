@@ -33,7 +33,7 @@
 
 | Файл | Что записывает |
 |---|---|
-| `data/json/images/images.json` | Новые записи: `{ "person": "#Tag", "posted": 0, "post_time": null, "caption": "" }` |
+| `data/json/images/images.json` | Новые записи: `{ "person": "#Tag", "posted": 0 }` |
 
 ## Что перемещает
 
@@ -92,9 +92,7 @@
 {
   "asuka_langley_0001.jpg": {
     "person": "#Asuka_Langley",
-    "posted": 0,
-    "post_time": null,
-    "caption": ""
+    "posted": 0
   }
 }
 ```
@@ -102,9 +100,9 @@
 | Поле | Тип | Кто пишет | Описание |
 |---|---|---|---|
 | `person` | string | FilenameTagger | Хэштег персонажа из filename_tags.json |
-| `posted` | int (0/1) | Auto-post | 0 = не опубликовано, 1 = опубликовано |
-| `post_time` | string/null | Auto-post | ISO datetime публикации |
-| `caption` | string | Auto-post | Подпись поста |
+| `posted` | int (0/1) | — | Всегда 0; запись удаляется из файла после того как Auto-post забирает арт |
+
+> После планирования публикации Auto-post **удаляет** запись из `images.json`. Детали публикации (время, подпись) сохраняются в `posted_images.json`.
 
 ---
 

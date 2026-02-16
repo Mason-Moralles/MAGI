@@ -86,8 +86,9 @@ class EffectiveConfig:
     delay_between_post_sec: int
 
     # posting rules
-    week_template: Dict[str, list[str]]
-    captions_by_time: Dict[str, str]
+    rules: list[dict]               # v2: [{time, days, caption}, ...]
+    week_template: Dict[str, list[str]]   # совместимость v1
+    captions_by_time: Dict[str, str]      # совместимость v1
     forced_posts: list[dict]
     forced_captions: list[dict]
 
@@ -157,9 +158,41 @@ def load_effective_config(
     schedule_days = _to_int(sch_user.get("schedule_days") or sch_user.get("shedule_day"), default=7)
     delay_between = _to_int(sch_def.get("delay_between_post"), default=5)
 
-    # posting rules
-    week_template = rules.get("week_template") or {}
-    captions_by_time = rules.get("captions_by_time") or {}
+    # posting rules — поддерживаем оба формата
+    # v2: {"rules": [{time, days, caption}, ...]}
+    # v1: {"week_template": {...}, "captions_by_time": {...}}
+    rules_list = rules.get("rules")  # v2
+    if rules_list is not None:
+        # Новый формат — используем напрямую
+        posting_rules = rules_list
+        # Для обратной совместимости строим week_template и captions_by_time на лету
+        week_template: Dict[str, list] = {}
+        captions_by_time: Dict[str, str] = {}
+        for rule in posting_rules:
+            t = (rule.get("time") or "").strip()
+            cap = (rule.get("caption") or "").strip()
+            if cap and t:
+                captions_by_time[t] = cap
+            for day in rule.get("days") or []:
+                week_template.setdefault(day, [])
+                if t and t not in week_template[day]:
+                    week_template[day].append(t)
+    else:
+        # Старый формат v1
+        posting_rules = []
+        week_template = rules.get("week_template") or {}
+        captions_by_time = rules.get("captions_by_time") or {}
+        # Строим rules[] из week_template + captions_by_time для Auto-post
+        time_days: Dict[str, list] = {}
+        for day, times in week_template.items():
+            for t in times:
+                time_days.setdefault(t, []).append(day)
+        for t, days in time_days.items():
+            posting_rules.append({
+                "time": t,
+                "days": days,
+                "caption": captions_by_time.get(t, ""),
+            })
 
     forced_posts = rules.get("forced_posts") or []
     forced_captions = rules.get("forced_captions") or []
@@ -192,6 +225,7 @@ def load_effective_config(
         time_zone=time_zone,
         schedule_days=schedule_days,
         delay_between_post_sec=delay_between,
+        rules=posting_rules,
         week_template=week_template,
         captions_by_time=captions_by_time,
         forced_posts=forced_posts,

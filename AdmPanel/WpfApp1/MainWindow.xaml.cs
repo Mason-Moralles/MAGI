@@ -32,7 +32,7 @@ namespace MAGIAdmin
         private readonly ObservableCollection<ImageItem> _filteredImages = new ObservableCollection<ImageItem>();
         private readonly ObservableCollection<ScheduleSlot> _allSlots = new ObservableCollection<ScheduleSlot>();
         private readonly ObservableCollection<ScheduleSlot> _filteredSlots = new ObservableCollection<ScheduleSlot>();
-        private readonly ObservableCollection<string> _postTimes = new ObservableCollection<string>();
+        private readonly ObservableCollection<PostTimeEntry> _postTimes = new ObservableCollection<PostTimeEntry>();
 
         private bool _uiReady;
         private bool _logsPaused;
@@ -63,7 +63,7 @@ namespace MAGIAdmin
             GalleryGrid.ItemsSource = _filteredImages;
             GalleryList.ItemsSource = _filteredImages;
             ScheduleDataGrid.ItemsSource = _filteredSlots;
-            PostTimesPanel.ItemsSource = _postTimes;
+            PostTimesGrid.ItemsSource = _postTimes;
 
             LoadInitialData();
             AddLog("Admin", "INFO", "MAGI Admin Panel started");
@@ -76,8 +76,13 @@ namespace MAGIAdmin
                 var json = LoadUserSettings();
                 var artsRoot = json["paths"]?["arts_root"]?.ToString() ?? "";
                 TbArtsPath.Text = artsRoot;
+
+                // Load schedule_days into the rules panel field
+                var schedSection = json["schedule"] as JObject;
+                var days = schedSection?["schedule_days"]?.ToString() ?? "7";
+                TbScheduleDaysRules.Text = days;
             }
-            catch { }
+            catch { TbScheduleDaysRules.Text = "7"; }
 
             LoadPostingRules();
         }
@@ -1123,6 +1128,16 @@ namespace MAGIAdmin
         //  TAB 3: SCHEDULE
         // ════════════════════════════════════════
 
+        // Вспомогательный метод: строит ISO-ключ из date + time строк
+        // с учётом локального часового пояса
+        private static string MakeIsoKey(string date, string time)
+        {
+            if (DateTime.TryParse(date + " " + time, out var dt))
+                return dt.ToString("yyyy-MM-ddTHH:mm:ss") +
+                       TimeZoneInfo.Local.GetUtcOffset(dt).ToString(@"\+hh\:mm");
+            return date + "T" + time + ":00";
+        }
+
         private void LoadSchedule()
         {
             try
@@ -1143,16 +1158,35 @@ namespace MAGIAdmin
                     var entry = prop.Value as JObject;
                     if (entry == null) continue;
 
+                    // Новый формат v2: ключ = ISO timestamp
+                    // Старый формат v1: ключ = "slot_N"
+                    var dateStr = entry["date"]?.ToString() ?? "";
+                    var timeStr = entry["time"]?.ToString() ?? "";
+
+                    // v2 поля
+                    var fileVal   = entry["file"]?.ToString() ?? "";
+                    var personVal = entry["person"]?.ToString() ?? "";
+                    var statusVal = entry["status"]?.ToString() ?? "pending";
+
+                    // v1 поля (обратная совместимость)
+                    if (string.IsNullOrEmpty(fileVal))
+                        fileVal = entry["image"]?.ToString() ?? entry["image_name"]?.ToString() ?? "";
+                    var imagePathVal = entry["image_path"]?.ToString() ?? "";
+
+                    // Нормализуем статус: v1 использовал "empty", v2 — "pending"
+                    if (statusVal == "empty") statusVal = "pending";
+
                     _allSlots.Add(new ScheduleSlot
                     {
-                        Date = entry["date"]?.ToString() ?? prop.Name,
-                        Time = entry["time"]?.ToString() ?? "",
-                        ImageName = entry["image"]?.ToString() ?? entry["image_name"]?.ToString() ?? "— не назначено —",
-                        ImagePath = entry["image_path"]?.ToString() ?? "",
-                        Status = entry["status"]?.ToString() ?? "empty",
-                        Caption = entry["caption"]?.ToString() ?? "",
-                        Tags = entry["tags"]?.ToString() ?? "",
-                        Repeat = entry["repeat"]?.ToString() ?? "нет"
+                        IsoKey    = prop.Name,
+                        Date      = dateStr,
+                        Time      = timeStr,
+                        ImageName = string.IsNullOrEmpty(fileVal) ? "— не назначено —" : fileVal,
+                        ImagePath = imagePathVal,
+                        Status    = statusVal,
+                        Caption   = entry["caption"]?.ToString() ?? "",
+                        Tags      = entry["tags"]?.ToString() ?? personVal,
+                        Repeat    = entry["repeat"]?.ToString() ?? "нет",
                     });
                 }
 
@@ -1167,35 +1201,8 @@ namespace MAGIAdmin
         private void ApplyScheduleFilter()
         {
             _filteredSlots.Clear();
-            var filterIndex = CbScheduleFilter?.SelectedIndex ?? 0;
-
             foreach (var slot in _allSlots)
-            {
-                switch (filterIndex)
-                {
-                    case 0: // All
-                        _filteredSlots.Add(slot);
-                        break;
-                    case 1: // Pending
-                        if (slot.Status == "pending" || slot.Status == "empty")
-                            _filteredSlots.Add(slot);
-                        break;
-                    case 2: // Posted
-                        if (slot.Status == "ready" || slot.Status == "posted")
-                            _filteredSlots.Add(slot);
-                        break;
-                    case 3: // Cancelled
-                        if (slot.Status == "cancelled")
-                            _filteredSlots.Add(slot);
-                        break;
-                }
-            }
-        }
-
-        private void ScheduleFilter_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (_allSlots.Count > 0)
-                ApplyScheduleFilter();
+                _filteredSlots.Add(slot);
         }
 
         private void AddScheduleSlot_Click(object sender, RoutedEventArgs e)
@@ -1223,22 +1230,24 @@ namespace MAGIAdmin
                 var schedulePath = GetJsonDbPath("schedule_json");
                 var json = new JObject();
 
-                int idx = 0;
                 foreach (var slot in _allSlots)
                 {
-                    var key = "slot_" + idx;
+                    // Используем IsoKey если он уже задан, иначе генерируем
+                    var key = !string.IsNullOrEmpty(slot.IsoKey)
+                        ? slot.IsoKey
+                        : MakeIsoKey(slot.Date, slot.Time);
+
+                    var imageFile = (slot.ImageName == "— не назначено —") ? null : slot.ImageName;
+
                     json[key] = new JObject
                     {
-                        ["date"] = slot.Date,
-                        ["time"] = slot.Time,
-                        ["image"] = slot.ImageName,
-                        ["image_path"] = slot.ImagePath ?? "",
-                        ["status"] = slot.Status,
+                        ["date"]    = slot.Date,
+                        ["time"]    = slot.Time,
+                        ["status"]  = slot.Status == "empty" ? "pending" : slot.Status,
+                        ["file"]    = imageFile,
+                        ["person"]  = string.IsNullOrEmpty(slot.Tags) ? null : (JToken)slot.Tags,
                         ["caption"] = slot.Caption ?? "",
-                        ["tags"] = slot.Tags ?? "",
-                        ["repeat"] = slot.Repeat ?? "нет"
                     };
-                    idx++;
                 }
 
                 File.WriteAllText(schedulePath, json.ToString());
@@ -1405,53 +1414,129 @@ namespace MAGIAdmin
 
         // ─── Posting Rules ───
 
+        private int _nextRuleId = 1;
+
         private void LoadPostingRules()
         {
             try
             {
+                _postTimes.Clear();
+                _nextRuleId = 1;
+
                 if (!File.Exists(PostingRulesPath)) return;
                 var json = JObject.Parse(File.ReadAllText(PostingRulesPath));
 
+                // ── New format: "rules" array ──
+                var rulesArr = json["rules"] as JArray;
+                if (rulesArr != null)
+                {
+                    foreach (var item in rulesArr)
+                    {
+                        var rule = item as JObject;
+                        if (rule == null) continue;
+
+                        var days = new List<string>();
+                        var daysArr = rule["days"] as JArray;
+                        if (daysArr != null)
+                            foreach (var d in daysArr)
+                                days.Add(d.ToString());
+
+                        var entry = new PostTimeEntry
+                        {
+                            Id      = _nextRuleId++,
+                            Time    = rule["time"]?.ToString() ?? "",
+                            Caption = rule["caption"]?.ToString() ?? "",
+                            Days    = days,
+                        };
+                        _postTimes.Add(entry);
+                    }
+                    return; // loaded from new format — done
+                }
+
+                // ── Legacy format: "week_template" + "captions_by_time" → migrate on the fly ──
+                var captionsObj = json["captions_by_time"] as JObject;
+                var captionsMap = new Dictionary<string, string>();
+                if (captionsObj != null)
+                    foreach (var prop in captionsObj.Properties())
+                        captionsMap[prop.Name] = prop.Value.ToString();
+
+                var timeDays = new Dictionary<string, HashSet<string>>();
                 var weekTemplate = json["week_template"] as JObject;
                 if (weekTemplate != null)
                 {
-                    CbMon.IsChecked = weekTemplate["Monday"] != null;
-                    CbTue.IsChecked = weekTemplate["Tuesday"] != null;
-                    CbWed.IsChecked = weekTemplate["Wednesday"] != null;
-                    CbThu.IsChecked = weekTemplate["Thursday"] != null;
-                    CbFri.IsChecked = weekTemplate["Friday"] != null;
-                    CbSat.IsChecked = weekTemplate["Saturday"] != null;
-                    CbSun.IsChecked = weekTemplate["Sunday"] != null;
-
-                    // Get unique times from all days
-                    _postTimes.Clear();
-                    var allTimes = new HashSet<string>();
-                    foreach (var prop in weekTemplate.Properties())
+                    foreach (var dayProp in weekTemplate.Properties())
                     {
-                        var times = prop.Value as JArray;
-                        if (times != null)
+                        var times = dayProp.Value as JArray;
+                        if (times == null) continue;
+                        foreach (var t in times)
                         {
-                            foreach (var t in times)
-                                allTimes.Add(t.ToString());
+                            var ts = t.ToString();
+                            if (!timeDays.ContainsKey(ts))
+                                timeDays[ts] = new HashSet<string>();
+                            timeDays[ts].Add(dayProp.Name);
                         }
                     }
-
-                    foreach (var t in allTimes.OrderBy(x => x))
-                        _postTimes.Add(t);
-
-                    TbPostsPerDay.Text = allTimes.Count.ToString();
                 }
+                foreach (var kv in captionsMap)
+                    if (!timeDays.ContainsKey(kv.Key))
+                        timeDays[kv.Key] = new HashSet<string>();
+
+                foreach (var t in timeDays.Keys.OrderBy(x => x))
+                {
+                    captionsMap.TryGetValue(t, out var cap);
+                    _postTimes.Add(new PostTimeEntry
+                    {
+                        Id      = _nextRuleId++,
+                        Time    = t,
+                        Caption = cap ?? "",
+                        Days    = timeDays[t].ToList(),
+                    });
+                }
+                // Auto-save in new format so the file is migrated
+                SavePostingRulesInternal();
             }
             catch { }
         }
 
         private void AddPostTime_Click(object sender, RoutedEventArgs e)
         {
-            var inputDialog = new InputDialog("Добавить время", "Введите время (HH:mm):");
-            if (inputDialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(inputDialog.InputValue))
+            var dlg = new PostTimeDialog("Добавить правило постинга");
+            if (dlg.ShowDialog() == true)
             {
-                _postTimes.Add(inputDialog.InputValue.Trim());
+                var time = dlg.TimeValue.Trim();
+                if (string.IsNullOrEmpty(time)) return;
+                // Allow duplicate times — each rule is independent (Variant B)
+                _postTimes.Add(new PostTimeEntry
+                {
+                    Id      = _nextRuleId++,
+                    Time    = time,
+                    Caption = dlg.CaptionValue.Trim(),
+                    Days    = dlg.SelectedDays,
+                });
             }
+        }
+
+        private void EditPostTime_Click(object sender, RoutedEventArgs e)
+        {
+            var entry = (sender as System.Windows.Controls.Button)?.Tag as PostTimeEntry;
+            if (entry == null) return;
+            var dlg = new PostTimeDialog("Изменить правило постинга", entry.Time, entry.Caption, entry.Days);
+            if (dlg.ShowDialog() == true)
+            {
+                entry.Time    = dlg.TimeValue.Trim();
+                entry.Caption = dlg.CaptionValue.Trim();
+                entry.Days    = dlg.SelectedDays;
+                entry.RaisePropertyChanged("DaysDisplay");
+                entry.RaisePropertyChanged("CaptionDisplay");
+                PostTimesGrid.Items.Refresh();
+            }
+        }
+
+        private void DeletePostTime_Click(object sender, RoutedEventArgs e)
+        {
+            var entry = (sender as System.Windows.Controls.Button)?.Tag as PostTimeEntry;
+            if (entry != null)
+                _postTimes.Remove(entry);
         }
 
         private void ApplyRulesToSchedule_Click(object sender, RoutedEventArgs e)
@@ -1462,44 +1547,95 @@ namespace MAGIAdmin
                 int scheduleDays = 7;
                 var schedSection = json["schedule"] as JObject;
                 if (schedSection != null)
-                {
                     int.TryParse(schedSection["schedule_days"]?.ToString() ?? "7", out scheduleDays);
+
+                // Читаем уже существующие слоты чтобы не перезаписывать scheduled/posted
+                var schedulePath = GetJsonDbPath("schedule_json");
+                var existingJson = File.Exists(schedulePath)
+                    ? JObject.Parse(File.ReadAllText(schedulePath))
+                    : new JObject();
+
+                // Набор ключей уже запланированных/отправленных слотов — не трогаем
+                var protectedKeys = new HashSet<string>();
+                foreach (var p in existingJson.Properties())
+                {
+                    var st = (p.Value as JObject)?["status"]?.ToString() ?? "";
+                    if (st == "scheduled" || st == "posted" || st == "missed")
+                        protectedKeys.Add(p.Name);
                 }
 
-                // Generate slots based on rules
                 _allSlots.Clear();
-                var dayCheckboxes = new Dictionary<string, CheckBox>
-                {
-                    {"Monday", CbMon}, {"Tuesday", CbTue}, {"Wednesday", CbWed},
-                    {"Thursday", CbThu}, {"Friday", CbFri}, {"Saturday", CbSat}, {"Sunday", CbSun}
-                };
 
+                // Сначала восстанавливаем защищённые слоты в UI
+                foreach (var p in existingJson.Properties())
+                {
+                    if (!protectedKeys.Contains(p.Name)) continue;
+                    var e2 = p.Value as JObject;
+                    if (e2 == null) continue;
+                    var fileVal = e2["file"]?.ToString() ?? "";
+                    _allSlots.Add(new ScheduleSlot
+                    {
+                        IsoKey    = p.Name,
+                        Date      = e2["date"]?.ToString() ?? "",
+                        Time      = e2["time"]?.ToString() ?? "",
+                        ImageName = string.IsNullOrEmpty(fileVal) ? "— не назначено —" : fileVal,
+                        Status    = e2["status"]?.ToString() ?? "scheduled",
+                        Caption   = e2["caption"]?.ToString() ?? "",
+                        Tags      = e2["person"]?.ToString() ?? "",
+                        Repeat    = "нет",
+                    });
+                }
+
+                // Генерируем новые pending-слоты
+                int newCount = 0;
                 for (int d = 0; d < scheduleDays; d++)
                 {
-                    var date = DateTime.Now.AddDays(d);
+                    var date    = DateTime.Now.AddDays(d);
                     var dayName = date.DayOfWeek.ToString();
 
-                    CheckBox cb;
-                    if (dayCheckboxes.TryGetValue(dayName, out cb) && cb.IsChecked == true)
+                    foreach (var rule in _postTimes)
                     {
-                        foreach (var time in _postTimes)
+                        if (!rule.Days.Contains(dayName)) continue;
+
+                        var isoKey = MakeIsoKey(date.ToString("yyyy-MM-dd"), rule.Time);
+                        if (protectedKeys.Contains(isoKey)) continue; // уже запланировано
+
+                        _allSlots.Add(new ScheduleSlot
                         {
-                            _allSlots.Add(new ScheduleSlot
-                            {
-                                Date = date.ToString("yyyy-MM-dd"),
-                                Time = time,
-                                ImageName = "— не назначено —",
-                                Status = "empty",
-                                Caption = "",
-                                Tags = "",
-                                Repeat = "нет"
-                            });
-                        }
+                            IsoKey    = isoKey,
+                            Date      = date.ToString("yyyy-MM-dd"),
+                            Time      = rule.Time,
+                            ImageName = "— не назначено —",
+                            Status    = "pending",
+                            Caption   = rule.Caption ?? "",
+                            Tags      = "",
+                            Repeat    = "нет",
+                        });
+                        newCount++;
                     }
                 }
 
+                // Сохраняем сразу в schedule.json (единый формат v2)
+                var outJson = new JObject();
+                foreach (var slot in _allSlots.OrderBy(s => s.IsoKey))
+                {
+                    var fileVal = (slot.ImageName == "— не назначено —") ? null : slot.ImageName;
+                    outJson[slot.IsoKey] = new JObject
+                    {
+                        ["date"]    = slot.Date,
+                        ["time"]    = slot.Time,
+                        ["status"]  = slot.Status,
+                        ["file"]    = fileVal,
+                        ["person"]  = string.IsNullOrEmpty(slot.Tags) ? null : (JToken)slot.Tags,
+                        ["caption"] = slot.Caption ?? "",
+                    };
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(schedulePath));
+                File.WriteAllText(schedulePath, outJson.ToString());
+
                 ApplyScheduleFilter();
-                AddLog("Admin", "INFO", $"Generated {_allSlots.Count} schedule slots for {scheduleDays} days");
+                AddLog("Admin", "INFO",
+                    $"Расписание обновлено: {newCount} новых слотов, {protectedKeys.Count} защищённых. Всего: {_allSlots.Count}");
             }
             catch (Exception ex)
             {
@@ -1507,34 +1643,52 @@ namespace MAGIAdmin
             }
         }
 
+        private void ScheduleDays_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Save schedule_days to user_settings.json whenever the value changes
+            if (int.TryParse(TbScheduleDaysRules.Text.Trim(), out int days) && days > 0)
+            {
+                try
+                {
+                    var json = LoadUserSettings();
+                    if (json["schedule"] == null)
+                        json["schedule"] = new JObject();
+                    json["schedule"]["schedule_days"] = days;
+                    SaveUserSettings(json);
+                }
+                catch { }
+            }
+        }
+
         private void SavePostingRules_Click(object sender, RoutedEventArgs e)
+        {
+            SavePostingRulesInternal();
+            AddLog("Admin", "INFO", "Posting rules saved");
+        }
+
+        private void SavePostingRulesInternal()
         {
             try
             {
-                var json = new JObject();
-                json["version"] = 1;
-
-                var weekTemplate = new JObject();
-                var times = new JArray(_postTimes.ToArray());
-
-                var dayMap = new Dictionary<string, CheckBox>
+                var rulesArr = new JArray();
+                foreach (var entry in _postTimes)
                 {
-                    {"Monday", CbMon}, {"Tuesday", CbTue}, {"Wednesday", CbWed},
-                    {"Thursday", CbThu}, {"Friday", CbFri}, {"Saturday", CbSat}, {"Sunday", CbSun}
-                };
-
-                foreach (var kv in dayMap)
-                {
-                    if (kv.Value.IsChecked == true)
-                        weekTemplate[kv.Key] = new JArray(_postTimes.ToArray());
+                    rulesArr.Add(new JObject
+                    {
+                        ["time"]    = entry.Time,
+                        ["days"]    = new JArray(entry.Days.ToArray()),
+                        ["caption"] = entry.Caption ?? "",
+                    });
                 }
 
-                json["week_template"] = weekTemplate;
-                json["captions_by_time"] = new JObject();
+                var json = new JObject
+                {
+                    ["version"] = 2,
+                    ["rules"]   = rulesArr,
+                };
 
                 Directory.CreateDirectory(AppDataDir);
                 File.WriteAllText(PostingRulesPath, json.ToString());
-                AddLog("Admin", "INFO", "Posting rules saved");
             }
             catch (Exception ex)
             {
@@ -1603,6 +1757,130 @@ namespace MAGIAdmin
                 Content = "Отмена",
                 Width = 80,
                 Height = 30,
+                Background = new SolidColorBrush(Color.FromRgb(208, 208, 208))
+            };
+            cancelBtn.Click += (s, e) => { DialogResult = false; };
+
+            btnPanel.Children.Add(okBtn);
+            btnPanel.Children.Add(cancelBtn);
+            sp.Children.Add(btnPanel);
+
+            Content = sp;
+        }
+    }
+
+    // ─── Dialog: time + days + caption ───
+    public class PostTimeDialog : Window
+    {
+        private TextBox _timeBox;
+        private TextBox _captionBox;
+        private readonly Dictionary<string, CheckBox> _dayCbs = new Dictionary<string, CheckBox>();
+
+        public string TimeValue    { get; private set; }
+        public string CaptionValue { get; private set; }
+        public List<string> SelectedDays { get; private set; } = new List<string>();
+
+        private static readonly (string eng, string rus)[] _days =
+        {
+            ("Monday","Пн"), ("Tuesday","Вт"), ("Wednesday","Ср"), ("Thursday","Чт"),
+            ("Friday","Пт"), ("Saturday","Сб"), ("Sunday","Вс")
+        };
+
+        public PostTimeDialog(string title, string initialTime = "", string initialCaption = "",
+                              List<string> initialDays = null)
+        {
+            Title = title;
+            Width = 380;
+            Height = 340;
+            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            Background = new SolidColorBrush(Color.FromRgb(230, 230, 255));
+            ResizeMode = ResizeMode.NoResize;
+
+            var sp = new StackPanel { Margin = new Thickness(16) };
+
+            // ── Time ──
+            sp.Children.Add(new TextBlock
+            {
+                Text = "Время (HH:mm):",
+                FontSize = 13, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 0, 4)
+            });
+            _timeBox = new TextBox
+            {
+                Height = 30, FontSize = 13,
+                Padding = new Thickness(6, 4, 6, 4),
+                Text = initialTime
+            };
+            sp.Children.Add(_timeBox);
+
+            // ── Days ──
+            sp.Children.Add(new TextBlock
+            {
+                Text = "Дни недели:",
+                FontSize = 13, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 4)
+            });
+
+            var daysPanel = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
+            foreach (var (eng, rus) in _days)
+            {
+                var cb = new CheckBox
+                {
+                    Content = rus,
+                    FontSize = 13,
+                    Margin = new Thickness(0, 0, 12, 4),
+                    IsChecked = initialDays != null && initialDays.Contains(eng)
+                };
+                _dayCbs[eng] = cb;
+                daysPanel.Children.Add(cb);
+            }
+            sp.Children.Add(daysPanel);
+
+            // ── Caption ──
+            sp.Children.Add(new TextBlock
+            {
+                Text = "Подпись (необязательно):",
+                FontSize = 13, FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 10, 0, 4)
+            });
+            _captionBox = new TextBox
+            {
+                Height = 30, FontSize = 13,
+                Padding = new Thickness(6, 4, 6, 4),
+                Text = initialCaption
+            };
+            sp.Children.Add(_captionBox);
+
+            // ── Buttons ──
+            var btnPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 14, 0, 0)
+            };
+
+            var okBtn = new Button
+            {
+                Content = "OK", Width = 80, Height = 30,
+                Background = new SolidColorBrush(Color.FromRgb(123, 110, 231)),
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+            okBtn.Click += (s, e) =>
+            {
+                TimeValue    = _timeBox.Text;
+                CaptionValue = _captionBox.Text;
+                SelectedDays = new List<string>();
+                foreach (var kv in _dayCbs)
+                    if (kv.Value.IsChecked == true)
+                        SelectedDays.Add(kv.Key);
+                DialogResult = true;
+            };
+
+            var cancelBtn = new Button
+            {
+                Content = "Отмена", Width = 80, Height = 30,
                 Background = new SolidColorBrush(Color.FromRgb(208, 208, 208))
             };
             cancelBtn.Click += (s, e) => { DialogResult = false; };

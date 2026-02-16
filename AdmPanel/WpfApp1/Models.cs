@@ -111,6 +111,8 @@ namespace MAGIAdmin
     // ─── Schedule slot ───
     public class ScheduleSlot : INotifyPropertyChanged
     {
+        /// <summary>ISO-8601 key used in schedule.json, e.g. "2026-02-17T07:29:00+03:00"</summary>
+        public string IsoKey { get; set; }
         public string Date { get; set; }
         public string Time { get; set; }
         public string ImageName { get; set; }
@@ -164,11 +166,96 @@ namespace MAGIAdmin
 
         public bool HasImage => !string.IsNullOrEmpty(ImageName) && ImageName != "—";
 
+        private static readonly System.Collections.Generic.Dictionary<string, string> _dowRu =
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                {"Monday","Понедельник"}, {"Tuesday","Вторник"}, {"Wednesday","Среда"},
+                {"Thursday","Четверг"},  {"Friday","Пятница"},  {"Saturday","Суббота"}, {"Sunday","Воскресенье"}
+            };
+
+        /// <summary>Russian day-of-week name derived from Date string (yyyy-MM-dd).</summary>
+        public string DayOfWeek
+        {
+            get
+            {
+                if (DateTime.TryParse(Date, out var dt))
+                {
+                    var eng = dt.DayOfWeek.ToString();
+                    return _dowRu.ContainsKey(eng) ? _dowRu[eng] : eng;
+                }
+                return "";
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         public void RaisePropertyChanged(string name)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+    }
+
+    // ─── Posting rule: one row = one rule (time + caption + list of active days) ───
+    public class PostTimeEntry : INotifyPropertyChanged
+    {
+        private string _time;
+        private string _caption;
+        private System.Collections.Generic.List<string> _days
+            = new System.Collections.Generic.List<string>();
+
+        /// <summary>Unique rule id (for stable identification during edit).</summary>
+        public int Id { get; set; }
+
+        public string Time
+        {
+            get => _time;
+            set { _time = value; OnPropertyChanged("Time"); }
+        }
+
+        public string Caption
+        {
+            get => _caption;
+            set { _caption = value; OnPropertyChanged("Caption"); OnPropertyChanged("CaptionDisplay"); }
+        }
+
+        /// <summary>List of English day names: "Monday", "Tuesday", …</summary>
+        public System.Collections.Generic.List<string> Days
+        {
+            get => _days;
+            set { _days = value ?? new System.Collections.Generic.List<string>();
+                  OnPropertyChanged("Days"); OnPropertyChanged("DaysDisplay"); }
+        }
+
+        // ── Short day abbreviations in Russian for display in the grid ──
+        private static readonly System.Collections.Generic.Dictionary<string, string> _abbr =
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                {"Monday","Пн"}, {"Tuesday","Вт"}, {"Wednesday","Ср"},
+                {"Thursday","Чт"}, {"Friday","Пт"}, {"Saturday","Сб"}, {"Sunday","Вс"}
+            };
+
+        private static readonly string[] _order =
+            { "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday" };
+
+        /// <summary>E.g. "Пн Вт Пт" — shown in the Days column.</summary>
+        public string DaysDisplay
+        {
+            get
+            {
+                var parts = new System.Collections.Generic.List<string>();
+                foreach (var d in _order)
+                    if (_days.Contains(d) && _abbr.ContainsKey(d))
+                        parts.Add(_abbr[d]);
+                return parts.Count > 0 ? string.Join(" ", parts) : "—";
+            }
+        }
+
+        /// <summary>Caption shown in grid (em-dash when empty).</summary>
+        public string CaptionDisplay => string.IsNullOrWhiteSpace(_caption) ? "—" : _caption;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        public void RaisePropertyChanged(string name) => OnPropertyChanged(name);
+        private void OnPropertyChanged(string name)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     // ─── Service status for microservice cards ───
