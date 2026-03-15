@@ -1,3 +1,11 @@
+"""
+FilenameTagger — тегирование изображений по ключевым словам в имени файла.
+
+Режимы работы:
+  1. Через API Gateway (рекомендуется): записывает данные через HTTP в SQLite
+  2. Fallback на JSON: если Gateway недоступен — пишет напрямую в images.json
+"""
+
 import os
 import sys
 import json
@@ -8,6 +16,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT_DIR)
 
 from config.config_loader import load_effective_config
+
 
 def load_json(path: Path, default=None):
     if default is None:
@@ -20,10 +29,24 @@ def load_json(path: Path, default=None):
     except Exception:
         return default
 
+
 def save_json(path: Path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _get_gateway_client():
+    """Пытается подключиться к API Gateway. Возвращает None если недоступен."""
+    try:
+        from config.gateway_client import GatewayClient
+        gw = GatewayClient()
+        if gw.is_gateway_available():
+            return gw
+    except Exception:
+        pass
+    return None
+
 
 def main():
     cfg = load_effective_config()
@@ -38,7 +61,18 @@ def main():
     NEW_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     CHECK_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-    images_data = load_json(IMAGES_JSON, {})
+    # Определяем режим: Gateway или JSON fallback
+    gw = _get_gateway_client()
+    use_gateway = gw is not None
+
+    if use_gateway:
+        print("[TAGGER] Режим: API Gateway (SQLite)")
+        # Получаем уже обработанные файлы из Gateway
+        existing_images = {img["fileName"] for img in gw.get_images()}
+    else:
+        print("[TAGGER] Режим: JSON fallback (Gateway недоступен)")
+        existing_images = set()
+        images_data = load_json(IMAGES_JSON, {})
 
     count_files = 0
 
@@ -50,9 +84,13 @@ def main():
         if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
 
-        # уже обработан ранее
-        if fname in images_data and images_data[fname].get("person"):
-            continue
+        # Уже обработан ранее
+        if use_gateway:
+            if fname in existing_images:
+                continue
+        else:
+            if fname in images_data and images_data[fname].get("person"):
+                continue
 
         fname_lower = fname.lower()
 
@@ -65,12 +103,20 @@ def main():
         if not matched_tag:
             continue
 
-        images_data[fname] = {
-            "person": matched_tag,
-            "posted": 0,
-            "post_time": None,
-            "caption": ""
-        }
+        # Записываем результат
+        if use_gateway:
+            try:
+                gw.add_image(fname, matched_tag)
+            except Exception as e:
+                print(f"[ERROR] Не смог записать в Gateway {fname}: {e}")
+                continue
+        else:
+            images_data[fname] = {
+                "person": matched_tag,
+                "posted": 0,
+                "post_time": None,
+                "caption": ""
+            }
 
         print(f"[FILENAME] {fname} -> {matched_tag}")
         count_files += 1
@@ -82,11 +128,15 @@ def main():
         except Exception as e:
             print(f"[ERROR] Не смог переместить {fname}: {e}")
 
-    save_json(IMAGES_JSON, images_data)
+    # Сохраняем только в режиме JSON fallback
+    if not use_gateway:
+        save_json(IMAGES_JSON, images_data)
 
     print("\n" + "=" * 50)
     print("ОБРАБОТКА ЗАВЕРШЕНА")
     print(f"Общее количество обработанных файлов: {count_files}")
+    if use_gateway:
+        print("Данные сохранены в SQLite через API Gateway")
 
 
 if __name__ == "__main__":

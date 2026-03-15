@@ -8,15 +8,45 @@
 
 | Файл | Описание |
 |---|---|
+| `Parser/service.py` | FastAPI HTTP-сервер (порт 5001) |
 | `Parser/PinterestParser.py` | Парсер Pinterest v3.0 |
 | `Parser/PixivParser.py` | Парсер Pixiv v1.0 |
+| `Parser/requirements.txt` | Зависимости Python |
 
 ---
 
 ## Запуск
 
+### Как HTTP-сервис (рекомендуется)
+
+```bash
+cd Parser
+pip install -r requirements.txt
+python service.py
+# → http://localhost:5001
+```
+
+API-эндпоинты:
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | `/health` | Health-check сервиса |
+| GET | `/status` | Статус текущей задачи |
+| POST | `/run` | Запуск парсинга (body: `{"sources": ["pinterest", "pixiv"]}`) |
+| POST | `/stop` | Остановка парсинга |
+
+### Через AdminPanel
+
 Запускается из AdminPanel (вкладка **Микросервисы**, кнопка **START** у блока **Parser**).
 Можно выбрать источник: ✅ Pinterest / ✅ Pixiv (или оба).
+
+### Через API Gateway
+
+```bash
+POST http://localhost:5000/api/parser/run
+Content-Type: application/json
+{"sources": ["pinterest"]}
+```
 
 ---
 

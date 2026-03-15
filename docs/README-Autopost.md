@@ -8,15 +8,43 @@
 
 | Файл | Описание |
 |---|---|
-| `Auto-post/Auto-post.py` | Основной скрипт |
+| `Auto-post/service.py` | FastAPI HTTP-сервер (порт 5003) |
+| `Auto-post/Auto-post.py` | Основной скрипт публикации |
+| `Auto-post/requirements.txt` | Зависимости Python |
 | `config/config_loader.py` | Импортируется для загрузки конфига |
 
 ---
 
 ## Запуск
 
+### Как HTTP-сервис (рекомендуется)
+
+```bash
+cd Auto-post
+pip install -r requirements.txt
+python service.py
+# → http://localhost:5003
+```
+
+API-эндпоинты:
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | `/health` | Health-check сервиса |
+| GET | `/status` | Статус текущей задачи |
+| POST | `/run` | Запуск публикации |
+| POST | `/stop` | Остановка |
+
+### Через AdminPanel
+
 Запускается из AdminPanel (вкладка **Микросервисы**, кнопка **START** у блока **Auto-post**).
-Можно выбрать режим: 🔘 Личный (user API) / 🔘 Бот (bot_token).
+Можно выбрать режим: Личный (user API) / Бот (bot_token).
+
+### Через API Gateway
+
+```bash
+POST http://localhost:5000/api/publisher/run
+```
 
 ---
 

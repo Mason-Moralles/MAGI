@@ -1,35 +1,15 @@
 """
 Auto-post.py  —  MAGI автопостинг в Telegram
 
-Формат schedule.json (единый, v2):
-{
-  "2026-02-17T07:29:00+03:00": {
-    "date":    "2026-02-17",
-    "time":    "07:29",
-    "status":  "pending" | "scheduled" | "posted" | "error",
-    "file":    null | "asuka_langley_0001.jpg",
-    "person":  null | "#Asuka_Langley",
-    "caption": "Доброе утро!"
-  }
-}
-
-Формат images.json (v2, только нужные поля):
-{
-  "asuka_langley_0001.jpg": {
-    "person": "#Asuka_Langley",
-    "posted": 0
-  }
-}
+Режимы работы:
+  1. Через API Gateway (рекомендуется): читает/пишет данные через HTTP в SQLite
+  2. Fallback на JSON: если Gateway недоступен — работает напрямую с JSON-файлами
 
 Логика:
-  1. Читает schedule.json — берёт слоты со status="pending"
+  1. Читает pending-слоты из расписания
   2. Назначает арт каждому слоту (select_art), статус → "scheduled"
   3. Планирует отправку через Telegram (schedule=slot_time)
-  4. После успешного планирования:
-       - schedule[slot]["status"] = "scheduled", file/person заполнены
-       - images.json: запись удаляется (арт переходит в оборот)
-       - posted_images.json: запись добавляется
-       - файл перемещается в Post-Images
+  4. После успешного планирования обновляет базу данных
 """
 
 import json
@@ -75,27 +55,30 @@ def save_json(path: Path, data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def _get_gateway_client():
+    """Пытается подключиться к API Gateway."""
+    try:
+        from config.gateway_client import GatewayClient
+        gw = GatewayClient()
+        if gw.is_gateway_available():
+            return gw
+    except Exception:
+        pass
+    return None
+
+
 # ─────────────────────────────────────────────
-#  Генерация слотов (панель → schedule.json)
-#  Используется ТОЛЬКО если schedule.json пуст
-#  или не содержит pending-слотов. Основной
-#  генератор — кнопка «Применить правила» в панели.
+#  Генерация слотов
 # ─────────────────────────────────────────────
 
 def generate_pending_slots(tz, rules: list[dict], schedule_days: int,
                             existing_keys: set[str]) -> dict:
-    """
-    Генерирует pending-слоты из posting_rules.json (v2, rules[])
-    для случая когда schedule.json пустой / не заполнен панелью.
-
-    rules = [{"time": "07:29", "days": ["Monday","Friday"], "caption": "..."}]
-    """
     now = datetime.now(tz)
     new_slots = {}
 
     for delta in range(schedule_days):
         day_dt = now.date() + timedelta(days=delta)
-        day_name = day_dt.strftime("%A")  # "Monday", …
+        day_name = day_dt.strftime("%A")
 
         for rule in rules:
             if day_name not in rule.get("days", []):
@@ -128,13 +111,10 @@ def generate_pending_slots(tz, rules: list[dict], schedule_days: int,
 
 # ─────────────────────────────────────────────
 #  Выбор арта для слота
-#  - forced: по тегу персонажа если задан в правиле
-#  - обычный: не тот же персонаж подряд
 # ─────────────────────────────────────────────
 
 def select_art(tz, images_data: dict, forced_tag: str | None,
                last_person: str | None) -> str | None:
-    # Принудительный тег
     if forced_tag:
         candidates = [
             f for f, v in images_data.items()
@@ -144,7 +124,6 @@ def select_art(tz, images_data: dict, forced_tag: str | None,
             return candidates[0]
         log(tz, f"Нет арта для forced_tag={forced_tag}, берём из общего пула", "warning")
 
-    # Общий пул — не тот же персонаж подряд
     pool = [
         f for f, v in images_data.items()
         if v.get("posted") == 0 and v.get("person") != last_person
@@ -152,7 +131,6 @@ def select_art(tz, images_data: dict, forced_tag: str | None,
     if pool:
         return pool[0]
 
-    # Крайний случай: все оставшиеся арты того же персонажа
     fallback = [f for f, v in images_data.items() if v.get("posted") == 0]
     return fallback[0] if fallback else None
 
@@ -169,40 +147,59 @@ async def run_post_flow():
     log(tz, "=== MAGI Auto-post запущен ===", "info")
     log(tz, f"Текущее время: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}", "info")
 
-    # Загрузка данных
-    images_data  = load_json(cfg.images_json, {})
-    schedule_data = load_json(cfg.schedule_json, {})
-    posted_data  = load_json(cfg.posted_images_json, {})
+    # Определяем режим: Gateway или JSON fallback
+    gw = _get_gateway_client()
+    use_gateway = gw is not None
 
-    log(tz, f"Артов доступно: {sum(1 for v in images_data.values() if v.get('posted') == 0)}", "info")
+    if use_gateway:
+        log(tz, "Режим: API Gateway (SQLite)", "info")
+        # Загрузка данных через Gateway
+        raw_images = gw.get_images(unposted_only=True)
+        images_data = {img["fileName"]: img for img in raw_images}
 
-    # Если schedule.json не содержит pending-слотов — генерируем из правил
-    pending_keys = [k for k, v in schedule_data.items() if v.get("status") == "pending"]
-    if not pending_keys:
-        log(tz, "Pending-слотов нет — генерируем из posting_rules.json", "info")
-        new_slots = generate_pending_slots(
-            tz=tz,
-            rules=cfg.rules,
-            schedule_days=cfg.schedule_days,
-            existing_keys=set(schedule_data.keys()),
+        raw_pending = gw.get_pending_slots()
+        pending_slots = sorted(
+            [(s["isoKey"], s) for s in raw_pending],
+            key=lambda x: x[0]
         )
-        if new_slots:
-            schedule_data.update(new_slots)
-            save_json(cfg.schedule_json, schedule_data)
-            log(tz, f"Сгенерировано {len(new_slots)} новых слотов", "info")
+
+        log(tz, f"Артов доступно: {len(images_data)}", "info")
+        log(tz, f"Pending-слотов: {len(pending_slots)}", "info")
+
+        # Если нет pending — не генерируем (это делает панель)
+        if not pending_slots:
+            log(tz, "Нет слотов для планирования. Завершение.", "warning")
+            return
+    else:
+        log(tz, "Режим: JSON fallback (Gateway недоступен)", "warning")
+        images_data  = load_json(cfg.images_json, {})
+        schedule_data = load_json(cfg.schedule_json, {})
+        posted_data  = load_json(cfg.posted_images_json, {})
+
+        log(tz, f"Артов доступно: {sum(1 for v in images_data.values() if v.get('posted') == 0)}", "info")
+
         pending_keys = [k for k, v in schedule_data.items() if v.get("status") == "pending"]
+        if not pending_keys:
+            log(tz, "Pending-слотов нет — генерируем из posting_rules.json", "info")
+            new_slots = generate_pending_slots(
+                tz=tz, rules=cfg.rules, schedule_days=cfg.schedule_days,
+                existing_keys=set(schedule_data.keys()),
+            )
+            if new_slots:
+                schedule_data.update(new_slots)
+                save_json(cfg.schedule_json, schedule_data)
+                log(tz, f"Сгенерировано {len(new_slots)} новых слотов", "info")
+            pending_keys = [k for k, v in schedule_data.items() if v.get("status") == "pending"]
 
-    if not pending_keys:
-        log(tz, "Нет слотов для планирования. Завершение.", "warning")
-        return
+        if not pending_keys:
+            log(tz, "Нет слотов для планирования. Завершение.", "warning")
+            return
 
-    # Сортируем pending-слоты по времени
-    pending_slots = sorted(
-        [(k, schedule_data[k]) for k in pending_keys],
-        key=lambda x: x[0]  # ISO-строка сортируется лексикографически = по времени
-    )
-
-    log(tz, f"Pending-слотов для обработки: {len(pending_slots)}", "info")
+        pending_slots = sorted(
+            [(k, schedule_data[k]) for k in pending_keys],
+            key=lambda x: x[0]
+        )
+        log(tz, f"Pending-слотов для обработки: {len(pending_slots)}", "info")
 
     # Telegram-клиент
     client = TelegramClient(str(cfg.session_file), cfg.api_id, cfg.api_hash)
@@ -217,40 +214,41 @@ async def run_post_flow():
                 await client.start()
 
         for iso_key, slot in pending_slots:
-            # Парсим время слота
             try:
                 slot_dt = datetime.fromisoformat(iso_key)
             except ValueError:
                 log(tz, f"Некорректный ключ слота: {iso_key}", "error")
                 continue
 
-            # Слоты в прошлом пропускаем (помечаем как missed)
             if slot_dt <= now:
                 log(tz, f"Пропуск прошедшего слота: {iso_key}", "warning")
-                schedule_data[iso_key]["status"] = "missed"
-                save_json(cfg.schedule_json, schedule_data)
+                if use_gateway:
+                    gw.update_slot_status(iso_key, "missed")
+                else:
+                    schedule_data[iso_key]["status"] = "missed"
+                    save_json(cfg.schedule_json, schedule_data)
                 continue
 
-            # Выбор арта
-            forced_tag = slot.get("forced_tag")  # опционально, если панель задала
+            forced_tag = slot.get("forced_tag") if isinstance(slot, dict) else None
             art = select_art(tz, images_data, forced_tag, last_person)
 
             if not art:
                 log(tz, "Арты закончились. Остановка.", "error")
                 break
 
-            # Проверка наличия файла
             src = cfg.check_images_dir / art
             if not src.exists():
                 log(tz, f"Файл не найден: {src} — удаляем запись", "error")
-                images_data.pop(art, None)
-                save_json(cfg.images_json, images_data)
+                if use_gateway:
+                    gw.remove_image(art)
+                else:
+                    images_data.pop(art, None)
+                    save_json(cfg.images_json, images_data)
                 continue
 
             caption = slot.get("caption", "")
-            person  = images_data[art].get("person", "")
+            person = images_data[art].get("person", "")
 
-            # Планируем пост в Telegram
             try:
                 await client.send_file(
                     cfg.channel_link,
@@ -260,35 +258,33 @@ async def run_post_flow():
                 )
             except Exception as ex:
                 log(tz, f"Ошибка отправки {art}: {ex}", "error")
-                schedule_data[iso_key]["status"] = "error"
-                save_json(cfg.schedule_json, schedule_data)
+                if use_gateway:
+                    gw.update_slot_status(iso_key, "error")
+                else:
+                    schedule_data[iso_key]["status"] = "error"
+                    save_json(cfg.schedule_json, schedule_data)
                 continue
 
             log(tz, f"Запланировано: {art}  →  {slot_dt.strftime('%Y-%m-%d %H:%M %Z')}", "success")
 
-            # ── Обновление schedule.json ──
-            schedule_data[iso_key].update({
-                "status": "scheduled",
-                "file":   art,
-                "person": person,
-            })
-            save_json(cfg.schedule_json, schedule_data)
+            # Обновление данных
+            if use_gateway:
+                gw.update_slot_status(iso_key, "scheduled", file=art, person=person, caption=caption)
+                gw.mark_image_posted(art, person=person, posted_at=iso_key, caption=caption)
+            else:
+                schedule_data[iso_key].update({"status": "scheduled", "file": art, "person": person})
+                save_json(cfg.schedule_json, schedule_data)
+                images_data.pop(art, None)
+                save_json(cfg.images_json, images_data)
+                posted_data[art] = {"person": person, "posted_at": iso_key, "caption": caption}
+                save_json(cfg.posted_images_json, posted_data)
 
-            # ── Обновление images.json: убираем запись (арт уходит в архив) ──
-            images_data.pop(art, None)
-            save_json(cfg.images_json, images_data)
-
-            # ── posted_images.json: запись о публикации ──
-            posted_data[art] = {
-                "person":    person,
-                "posted_at": iso_key,
-                "caption":   caption,
-            }
-            save_json(cfg.posted_images_json, posted_data)
-
-            # ── Перемещение файла в Post-Images ──
+            # Перемещение файла
             cfg.post_images_dir.mkdir(parents=True, exist_ok=True)
             shutil.move(str(src), str(cfg.post_images_dir / art))
+
+            # Удаляем из локального кэша
+            images_data.pop(art, None)
 
             last_person = person
             scheduled_count += 1

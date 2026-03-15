@@ -9,14 +9,42 @@
 
 | Файл | Описание |
 |---|---|
-| `FilenameTagger/FilenameTagger.py` | Основной скрипт |
+| `FilenameTagger/service.py` | FastAPI HTTP-сервер (порт 5002) |
+| `FilenameTagger/FilenameTagger.py` | Основной скрипт тегирования |
+| `FilenameTagger/requirements.txt` | Зависимости Python |
 | `config/config_loader.py` | Импортируется для загрузки путей |
 
 ---
 
 ## Запуск
 
+### Как HTTP-сервис (рекомендуется)
+
+```bash
+cd FilenameTagger
+pip install -r requirements.txt
+python service.py
+# → http://localhost:5002
+```
+
+API-эндпоинты:
+
+| Метод | URL | Описание |
+|---|---|---|
+| GET | `/health` | Health-check сервиса |
+| GET | `/status` | Статус текущей задачи |
+| POST | `/run` | Запуск тегирования |
+| POST | `/stop` | Остановка |
+
+### Через AdminPanel
+
 Запускается из AdminPanel (вкладка **Микросервисы**, кнопка **START** у блока **Tagger**).
+
+### Через API Gateway
+
+```bash
+POST http://localhost:5000/api/tagger/run
+```
 
 ---
 
