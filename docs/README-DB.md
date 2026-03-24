@@ -102,7 +102,7 @@ AdminPanel (WPF) ──HTTP──────►│
          0..N (фильтр)    │   │ScheduleSlots   │
               ┌───────────┘   │────────────────│
               ▼               │ Id (PK)        │
-      ┌──────────────┐        │ IsoKey (UQ)    │
+      ┌──────────────┐        │ (IsoKey+ChId)UQ│
       │    Images    │        │ Date, Time     │
       │──────────────│        │ Status         │
       │ Id (PK)      │        │ File, Person   │
@@ -110,10 +110,10 @@ AdminPanel (WPF) ──HTTP──────►│
       │ Person       │        │ ChannelId      │
       │ Posted       │        └────────────────┘
       │ Caption      │
-      │ PostTime     │   ┌──────────────────┐
-      │ ChannelId    │   │  PostedImages    │
-      │ CreatedAt    │   │──────────────────│
-      └──────────────┘   │ Id (PK)          │
+      │ ChannelId    │   ┌──────────────────┐
+      │ CreatedAt    │   │  PostedImages    │
+      └──────────────┘   │──────────────────│
+                         │ Id (PK)          │
                          │ FileName (UQ)    │
       ┌──────────────┐   │ Person           │
       │DownloadRecords│  │ PostedAt         │
@@ -249,7 +249,6 @@ AdminPanel (WPF) ──HTTP──────►│
 | `Person` | string(200)? | — | Хэштег персонажа (`#Asuka_Langley`) |
 | `Posted` | int | Default `0` | 0 = в очереди (всегда 0 в этой таблице) |
 | `Caption` | string(1000) | Default `""` | Подпись к арту |
-| `PostTime` | string(50)? | — | (не используется — legacy) |
 | `ChannelId` | string(50)? | — | Канал, к которому привязан арт |
 | `CreatedAt` | DateTime | Default `UtcNow` | Время добавления |
 
@@ -295,7 +294,7 @@ Tagger добавляет (POST /api/data/images)
 | Поле | Тип | Constraints | Описание |
 |------|-----|-------------|----------|
 | `Id` | int | **PK** (auto) | |
-| `IsoKey` | string(50) | Required, **Unique** | ISO-8601 ключ: `2026-02-17T07:29:00+03:00` |
+| `IsoKey` | string(50) | Required, **Unique(+ChannelId)** | ISO-8601 ключ: `2026-02-17T07:29:00+03:00` |
 | `Date` | string(20) | — | Дата `YYYY-MM-DD` |
 | `Time` | string(10) | — | Время `HH:MM` |
 | `Status` | string(20) | Required, Default `"pending"` | Статус слота |
@@ -321,7 +320,9 @@ Date="2026-06-15", Time="7:29", TimeZone="Europe/Moscow"
   → IsoKey: "2026-06-15T07:29:00+03:00"
 ```
 
-**Upsert:** Если слот с таким `IsoKey` уже существует — обновляется, а не дублируется.
+**Уникальность:** Составной индекс `(IsoKey, ChannelId)` — разные каналы могут иметь слоты в одно время, но один канал не может иметь два слота с одинаковым IsoKey.
+
+**Upsert:** Если слот с таким `(IsoKey, ChannelId)` уже существует — обновляется, а не дублируется.
 
 **Ранее (JSON):** `data/json/schedule.json` — dict `{ "ISO_KEY": { date, time, status, ... } }`.
 
@@ -485,17 +486,18 @@ Date="2026-06-15", Time="7:29", TimeZone="Europe/Moscow"
 | `ChannelTaggerConfigs` | Unique Index | `ChannelId` | 1:1 с каналом |
 | `FilenameTags` | Index | `ChannelId` | 1:N с каналом |
 
-**Каскадное удаление** (реализовано в `ChannelService.DeleteChannelAsync`):
-При удалении канала удаляются:
-- `ChannelParserConfigs` (1:1)
-- `ChannelTaggerConfigs` (1:1)
-- `PostingRules` (1:N)
+**Каскадное удаление** при удалении канала:
+
+С FK constraints (автоматически через SQLite):
+- `ChannelParserConfigs` (1:1, CASCADE)
+- `ChannelTaggerConfigs` (1:1, CASCADE)
+- `FilenameTags` (1:N, CASCADE)
+- `PostingRules` (1:N, CASCADE)
+
+Через код (`ChannelService.DeleteChannelAsync`):
 - `ScheduleSlots` (1:N)
 - `Images` (1:N)
 - `PostedImages` (1:N)
-- `FilenameTags` (1:N)
-
-> Каскад реализован **в коде сервиса**, а не через FK constraints в SQLite.
 
 ---
 
@@ -529,13 +531,16 @@ Date="2026-06-15", Time="7:29", TimeZone="Europe/Moscow"
 
 **Рекомендация:** после полной миграции сделать `ChannelId` Required в этих таблицах.
 
-### 8.2. Нет FK constraints в SQLite
+### 8.2. FK constraints в SQLite ✅ Исправлено
 
-Связи между таблицами реализованы **только на уровне кода** (в `ChannelService`, `DataService`). SQLite не проверяет целостность при прямых SQL-запросах.
+Связь `Foreign Keys=True` включена в connection string (`Program.cs`).
+FK constraints настроены в `MagiDbContext.OnModelCreating()`:
+- `ChannelParserConfigs → Channels` (1:1, Cascade)
+- `ChannelTaggerConfigs → Channels` (1:1, Cascade)
+- `FilenameTags → Channels` (1:N, Cascade)
+- `PostingRules → Channels` (1:N, Cascade, optional)
 
-**Следствие:** при ручном редактировании БД возможны осиротевшие записи.
-
-**Рекомендация:** добавить `PRAGMA foreign_keys = ON` и настоящие FK в `OnModelCreating`.
+Каскадное удаление также дублируется в `ChannelService.DeleteChannelAsync()` для таблиц без FK (Images, PostedImages, ScheduleSlots, DownloadRecords).
 
 ### 8.3. Hashtags/NegativeHashtags хранятся как JSON-строки
 
@@ -555,9 +560,9 @@ Date="2026-06-15", Time="7:29", TimeZone="Europe/Moscow"
 
 Из `user_settings.json → schedule.schedule_days` (на сколько дней вперёд генерировать слоты) не мигрировано в БД. Publisher использует захардкоженное значение или параметр из Gateway.
 
-### 8.6. PostTime в Images — legacy
+### 8.6. PostTime в Images ✅ Удалено
 
-Поле `PostTime` в таблице `Images` не используется в текущем коде. Публикация перемещает запись в `PostedImages.PostedAt`.
+Поле `PostTime` удалено из `ImageEntity`. Время публикации хранится в `PostedImages.PostedAt`.
 
 ---
 
@@ -606,13 +611,13 @@ Date="2026-06-15", Time="7:29", TimeZone="Europe/Moscow"
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| `GET` | `/api/schedule` | Все слоты (фильтр: `channelId`) |
-| `GET` | `/api/schedule/{isoKey}` | Слот по ключу |
-| `POST` | `/api/schedule` | Создать слот |
-| `PUT` | `/api/schedule/{isoKey}` | Обновить слот |
-| `DELETE` | `/api/schedule/{isoKey}` | Удалить слот |
-| `PUT` | `/api/schedule/update` | Обновить (isoKey в body) |
-| `POST` | `/api/schedule/delete` | Удалить (isoKey в body) |
+| `GET` | `/api/schedule` | Все слоты (фильтр: `?channelId=`) |
+| `GET` | `/api/schedule/{isoKey}` | Слот по ключу (`?channelId=` для точной идентификации) |
+| `POST` | `/api/schedule` | Создать слот (channelId в body) |
+| `PUT` | `/api/schedule/{isoKey}` | Обновить слот (channelId в body) |
+| `DELETE` | `/api/schedule/{isoKey}` | Удалить слот (`?channelId=`) |
+| `PUT` | `/api/schedule/update` | Обновить (isoKey + channelId в body) |
+| `POST` | `/api/schedule/delete` | Удалить (isoKey + channelId в body) |
 | `GET` | `/api/schedule/pending` | Только pending |
 | `GET` | `/api/schedule/images` | Все изображения |
 | `GET` | `/api/schedule/posted` | Опубликованные |

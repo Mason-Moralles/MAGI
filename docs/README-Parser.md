@@ -9,9 +9,10 @@
 | Файл | Описание |
 |---|---|
 | `Parser/service.py` | FastAPI HTTP-сервер (порт 5001) |
-| `Parser/PinterestParser.py` | Парсер Pinterest v3.0 |
-| `Parser/PixivParser.py` | Парсер Pixiv v1.0 |
+| `Parser/PinterestParser.py` | Парсер Pinterest v4.0 (Gateway API) |
+| `Parser/PixivParser.py` | Парсер Pixiv v2.0 (Gateway API) |
 | `Parser/requirements.txt` | Зависимости Python |
+| `config/gateway_client.py` | HTTP-клиент для взаимодействия с Gateway |
 
 ---
 
@@ -45,44 +46,51 @@ API-эндпоинты:
 ```bash
 POST http://localhost:5000/api/parser/run
 Content-Type: application/json
-{"sources": ["pinterest"]}
+{"channelId": "b80d4957", "sources": ["pinterest"]}
 ```
 
 ---
 
-## Что читает
+## Источники данных
 
-| Файл | Что берёт |
+Все данные читаются и записываются **через API Gateway** (HTTP REST → SQLite).
+
+### Что читает (из Gateway)
+
+| Endpoint | Что берёт |
 |---|---|
-| `data/json/Parser/config.json` | `hashtags`, `negativeHashtags`, `imagesPerHashtag`, `downloadPath`, `scrollDelayMs`, `imageLoadDelayMs` |
-| `data/json/Parser/Pinterest_downloaded_images.json` | Список уже скачанных URL (чтобы не скачивать повторно) |
-| `data/json/Parser/Pixiv_downloaded_images.json` | Список уже скачанных URL (чтобы не скачивать повторно) |
+| `GET /api/channel/{id}/parser-config` | Хэштеги, негативные хэштеги, лимиты, задержки, источники |
+| `GET /api/data/downloads/check?sourceUrl=URL` | Проверка: был ли URL уже скачан (дедупликация) |
+| `GET /api/channel/{id}` | Данные канала (`ArtsRootPath` → путь для скачивания) |
 
-## Что пишет
+### Что пишет (в Gateway)
 
-| Файл | Что записывает |
+| Endpoint | Что записывает |
 |---|---|
-| `data/json/Parser/Pinterest_downloaded_images.json` | Новые записи скачанных пинов: `pinUrl`, `imageUrl`, `fileName`, `hashtag`, `downloadedAt` |
-| `data/json/Parser/Pixiv_downloaded_images.json` | Новые записи: `artworkUrl`, `imageUrl`, `fileName`, `hashtag`, `downloadedAt`. Пропущенные арты (негативный тег) — `fileName: "_skipped_"` |
-| `downloadPath\*.jpg` | Скачанные изображения (по умолчанию `D:\MAGI-Images\New-Images\`) |
+| `POST /api/data/downloads` | Запись о скачивании: source, sourceUrl, imageUrl, fileName, hashtag, channelId |
+
+### Что пишет (локальная ФС)
+
+| Путь | Описание |
+|---|---|
+| `{ArtsRootPath}/New-Images/*.jpg` | Скачанные изображения |
 
 ---
 
 ## Логика работы
 
 ### Общий алгоритм (оба парсера)
-1. Загрузка `config.json`
-2. Загрузка БД уже скачанных URL
-3. Для каждого хэштега из `hashtags`:
+1. Получить конфиг канала из Gateway (`ChannelParserConfigs`)
+2. Для каждого хэштега из конфига:
    - Открыть страницу поиска в браузере (Selenium Chrome)
    - Прокрутить до нужного количества артов
    - Для каждого арта/пина:
-     - Проверить по БД — если уже скачан, пропустить
+     - Проверить через Gateway — если уже скачан, пропустить (`GET /api/data/downloads/check`)
      - Открыть страницу арта в новой вкладке
      - **[Только Pixiv]** Проверить теги на совпадение с `negativeHashtags`
-     - Если негативный тег найден → вписать в БД с `fileName: "_skipped_"`, пропустить скачивание
-     - Иначе → скачать изображение, добавить запись в БД
-4. Сохранить БД
+     - Если негативный тег найден → записать в Gateway с `fileName: "_skipped_"`, пропустить скачивание
+     - Иначе → скачать изображение, добавить запись через Gateway (`POST /api/data/downloads`)
+3. Файлы сохраняются в `{ArtsRootPath}/New-Images/`
 
 ### Особенности Pixiv
 - Требует авторизацию (Selenium открывает браузер с профилем пользователя)
@@ -101,54 +109,25 @@ Content-Type: application/json
 
 Вкладка **Микросервисы** → кнопка ⚙ рядом с **Parser** → окно `ParserSettingsWindow`:
 
-| Поле в окне | Ключ в config.json | Описание |
+| Поле в окне | Поле конфига (Gateway) | Описание |
 |---|---|---|
-| Путь загрузки | `downloadPath` | Куда скачивать (обычно `New-Images\`) |
-| Хэштеги (каждый на новой строке) | `hashtags` | Поисковые запросы |
+| Хэштеги (каждый на новой строке) | `hashtags` | Поисковые запросы (JSON-массив) |
 | Негативные хэштеги (Pixiv) | `negativeHashtags` | Арты с этими тегами пропускаются |
 | Изображений на хэштег | `imagesPerHashtag` | Максимум скачиваний за сессию |
 | Задержка прокрутки (мс) | `scrollDelayMs` | Пауза между прокрутками |
 | Задержка загрузки (мс) | `imageLoadDelayMs` | Пауза между скачиваниями |
+| Источники | `sources` | `pinterest`, `pixiv` (через запятую) |
+
+Путь загрузки вычисляется автоматически: `Channel.ArtsRootPath + "/New-Images"`.
 
 ---
 
-## config.json — полная схема
+## Зависимости Python
 
-```json
-{
-  "hashtags": ["綾波レイ", "asuka langley"],
-  "negativeHashtags": ["AI-generated"],
-  "imagesPerHashtag": 2,
-  "downloadPath": "D:\\MAGI-Images\\New-Images",
-  "databasePath": "D:\\MAGI\\data\\json\\parser\\Pinterest_downloaded_images.json",
-  "scrollDelayMs": 2000,
-  "imageLoadDelayMs": 1000
-}
 ```
-
----
-
-## Pinterest_downloaded_images.json / Pixiv_downloaded_images.json — схема записи
-
-```json
-[
-  {
-    "pinUrl": "https://www.pinterest.com/pin/12345/",
-    "imageUrl": "https://i.pinimg.com/.../image.jpg",
-    "fileName": "rei_ayanami_0001.jpg",
-    "hashtag": "rei ayanami",
-    "downloadedAt": "2026-02-14T06:05:37.431230"
-  }
-]
-```
-
-Для пропущенных артов (негативный тег, только Pixiv):
-```json
-{
-  "artworkUrl": "https://www.pixiv.net/en/artworks/140987963",
-  "imageUrl": "",
-  "fileName": "_skipped_",
-  "hashtag": "asuka langley",
-  "downloadedAt": "2026-02-15T13:25:20"
-}
+fastapi       # HTTP-сервер
+uvicorn       # ASGI-сервер
+pydantic      # Валидация данных
+selenium      # Браузерная автоматизация (Chrome)
+requests      # HTTP-клиент для скачивания изображений
 ```

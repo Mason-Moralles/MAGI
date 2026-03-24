@@ -90,7 +90,7 @@ Channel (корневая сущность)
 ```
 MAGI/
 ├── ApiGateway/              # API Gateway (ASP.NET Core)
-│   ├── Controllers/         # REST-контроллеры (7 шт.)
+│   ├── Controllers/         # REST-контроллеры (8 шт.)
 │   ├── Data/                # EF Core: Entities, DbContext, миграции
 │   ├── Models/              # DTO-модели
 │   ├── Services/            # Бизнес-логика, оркестрация, ProcessManager
@@ -124,12 +124,13 @@ MAGI/
 │       └── GatewayApiClient.cs      # HTTP-клиент к API Gateway
 │
 ├── config/                  # Общие Python-утилиты
-│   ├── gateway_client.py    # HTTP-клиент для Python-сервисов → Gateway
-│   └── config_loader.py     # Legacy: JSON конфиг (fallback для Auto-post)
+│   └── gateway_client.py    # HTTP-клиент для Python-сервисов → Gateway
 │
 ├── data/                    # Хранилище данных
-│   ├── magi.db              # SQLite база данных (основное хранилище)
-│   └── json/                # Legacy JSON-файлы (не используются в runtime)
+│   └── magi.db              # SQLite база данных (единственное хранилище)
+│
+├── ApiGateway.Tests/        # C# xUnit-тесты (EF Core InMemory)
+├── tests/                   # Python-тесты (pytest: unit, integration, scenarios)
 └── docs/                    # Документация по модулям
 ```
 
@@ -179,9 +180,9 @@ MAGI/
 | Parser Config | **SQLite** | Per-channel: хэштеги, источники, задержки |
 | Tagger Config | **SQLite** | Per-channel: шаблон, сепаратор, режим |
 | Filename Tags | **SQLite** | Per-channel: keyword → tag маппинг |
-| User Settings | **JSON** | ⚠️ Legacy fallback для Auto-post (не используется при наличии Gateway) |
 
-> **Статус миграции JSON → SQLite:** Parser, Tagger — завершено. Auto-post — частично (JSON fallback при недоступности Gateway).
+
+> **Статус миграции JSON → SQLite:** Все сервисы (Parser, Tagger, Auto-post) полностью работают через Gateway API. JSON-файлы используются только для одноразовой миграции при первом запуске.
 
 ---
 
@@ -312,9 +313,12 @@ dotnet build
 | Метод | URL | Описание |
 |---|---|---|
 | GET | `/api/schedule?channelId=` | Все слоты расписания |
-| POST | `/api/schedule` | Создать слот |
-| PUT | `/api/schedule/{key}` | Обновить слот |
-| DELETE | `/api/schedule/{key}` | Удалить слот |
+| GET | `/api/schedule/{key}?channelId=` | Слот по ключу |
+| POST | `/api/schedule` | Создать слот (channelId в body) |
+| PUT | `/api/schedule/{key}` | Обновить слот (channelId в body) |
+| DELETE | `/api/schedule/{key}?channelId=` | Удалить слот |
+| PUT | `/api/schedule/update` | Обновить (isoKey + channelId в body) |
+| POST | `/api/schedule/delete` | Удалить (isoKey + channelId в body) |
 
 ### Data API (для Python-сервисов)
 

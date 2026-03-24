@@ -38,12 +38,14 @@ API Gateway обеспечивает:
 ```
 ApiGateway/
 ├── Controllers/
+│   ├── HealthController.cs      # /health, /health/services
+│   ├── ProcessController.cs     # /api/process/* (управление Python-процессами)
 │   ├── ParserController.cs      # /api/parser/*
 │   ├── TaggerController.cs      # /api/tagger/*
 │   ├── PublisherController.cs   # /api/publisher/*
-│   ├── ScheduleController.cs    # /api/schedule/*
 │   ├── ChannelController.cs     # /api/channel/*
-│   └── HealthController.cs      # /health, /health/services
+│   ├── ScheduleController.cs    # /api/schedule/*
+│   └── DataController.cs        # /api/data/* (Data API для Python-сервисов)
 │
 ├── Data/
 │   ├── Entities.cs              # EF Core сущности (Image, Schedule, Channel...)
@@ -58,6 +60,7 @@ ApiGateway/
 ├── Services/
 │   ├── PythonServiceClient.cs   # HTTP-клиент для Python-сервисов
 │   ├── ServiceOrchestrator.cs   # Оркестрация и мониторинг сервисов
+│   ├── ProcessManager.cs        # Управление жизненным циклом Python-процессов
 │   ├── DataService.cs           # Доступ к данным через EF Core (SQLite)
 │   └── ChannelService.cs        # Управление каналами и сетями
 │
@@ -121,6 +124,11 @@ Swagger UI: `http://localhost:5000/swagger`
 - `GET /health` — health-check самого Gateway
 - `GET /health/services` — статусы всех микросервисов
 
+### ProcessController
+- `GET /api/process/status` — статус всех Python-процессов
+- `POST /api/process/{service}/start` — запустить Python-процесс
+- `POST /api/process/{service}/stop` — остановить Python-процесс
+
 ### ParserController
 - `GET /api/parser/status` — статус Parser-сервиса
 - `POST /api/parser/run` — запуск парсинга (body: `{"sources": ["pinterest", "pixiv"]}`)
@@ -142,10 +150,12 @@ Swagger UI: `http://localhost:5000/swagger`
 - `GET /api/schedule/pending` — только pending-слоты
 - `GET /api/schedule/images` — изображения для публикации
 - `GET /api/schedule/posted` — опубликованные изображения
-- `GET /api/schedule/{isoKey}` — слот по ключу
-- `POST /api/schedule` — создать слот
-- `PUT /api/schedule/{isoKey}` — обновить слот
-- `DELETE /api/schedule/{isoKey}` — удалить слот
+- `GET /api/schedule/{isoKey}` — слот по ключу (`?channelId=` — для мультиканальной идентификации)
+- `POST /api/schedule` — создать слот (channelId в body)
+- `PUT /api/schedule/{isoKey}` — обновить слот (channelId в body)
+- `DELETE /api/schedule/{isoKey}` — удалить слот (`?channelId=`)
+- `PUT /api/schedule/update` — обновить слот (isoKey + channelId в body)
+- `POST /api/schedule/delete` — удалить слот (isoKey + channelId в body)
 
 ### ChannelController
 - `GET /api/channel` — все каналы

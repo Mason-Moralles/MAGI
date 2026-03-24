@@ -1,6 +1,7 @@
 # Auto-post — Микросервис публикации
 
-Автоматически планирует публикацию артов в Telegram-канал по расписанию.
+Автоматически планирует публикацию артов в Telegram-каналы по расписанию.
+Поддерживает мультиканальную публикацию с двумя режимами: user-mode (Telethon) и bot-mode (Bot API).
 
 ---
 
@@ -9,9 +10,13 @@
 | Файл | Описание |
 |---|---|
 | `Auto-post/service.py` | FastAPI HTTP-сервер (порт 5003) |
-| `Auto-post/Auto-post.py` | Основной скрипт публикации |
+| `Auto-post/Auto-post.py` | Основной скрипт публикации (v3.0) |
+| `Auto-post/publishers/base.py` | `IPublisher` — абстрактный интерфейс публикации |
+| `Auto-post/publishers/telethon_publisher.py` | User-mode публикация (Telethon MTProto) |
+| `Auto-post/publishers/bot_publisher.py` | Bot-mode публикация (Bot API через aiohttp) |
+| `Auto-post/publishers/factory.py` | Фабрика создания publisher по режиму канала |
 | `Auto-post/requirements.txt` | Зависимости Python |
-| `config/config_loader.py` | Импортируется для загрузки конфига |
+| `config/gateway_client.py` | HTTP-клиент для взаимодействия с Gateway |
 
 ---
 
@@ -38,7 +43,7 @@ API-эндпоинты:
 ### Через AdminPanel
 
 Запускается из AdminPanel (вкладка **Микросервисы**, кнопка **START** у блока **Auto-post**).
-Можно выбрать режим: Личный (user API) / Бот (bot_token).
+Режим публикации (user / bot) определяется настройками канала в Gateway.
 
 ### Через API Gateway
 
@@ -48,153 +53,137 @@ POST http://localhost:5000/api/publisher/run
 
 ---
 
-## Что читает
+## Источники данных
 
-| Файл | Что берёт |
+Все данные читаются и записываются **через API Gateway** (HTTP REST → SQLite).
+Прямого доступа к JSON-файлам или БД нет.
+
+### Что читает (из Gateway)
+
+| Endpoint | Что берёт |
 |---|---|
-| `%APPDATA%\MAGI\user_settings.json` | `telegram.*` (api_id, api_hash, bot_token, channel_link, session_file), `schedule.time_zone`, `schedule.schedule_days`, пути к JSON БД |
-| `%APPDATA%\MAGI\posting_rules.json` | `rules[]` — массив правил (time, days[], caption) |
-| `data/json/images/images.json` | Список неопубликованных артов (`posted == 0`) с полем `person` |
-| `data/json/images/posted_images.json` | Уже опубликованные арты (чтобы не повторяться) |
-| `data/json/schedule.json` | Слоты со статусом `pending` — к ним привязываются арты |
-| `{arts_root}/Check-Images/{file}` | Файл арта для отправки |
+| `GET /api/data/channels/active` | Список активных каналов (креденшалы, пути, TimeZone) |
+| `GET /api/data/schedule/pending?channelId=X` | Pending-слоты расписания для канала |
+| `GET /api/data/images?channelId=X&unpostedOnly=true` | Неопубликованные арты канала |
+| `GET /api/data/rules?channelId=X` | Правила постинга (для генерации слотов) |
+| `{ArtsRootPath}/Check-Images/{file}` | Файл арта для отправки (локальная ФС) |
 
-## Что пишет
+### Что пишет (в Gateway)
 
-| Файл | Что записывает |
+| Endpoint | Что записывает |
 |---|---|
-| `data/json/images/images.json` | **Удаляет** запись арта после планирования |
-| `data/json/images/posted_images.json` | Добавляет запись: `{ "person", "posted_at" (ISO), "caption" }` |
-| `data/json/schedule.json` | Обновляет слот: `status` → `"scheduled"`, добавляет `file`, `person`, `caption` |
+| `PATCH /api/data/schedule/{isoKey}/status` | Обновляет слот: `status` → `"scheduled"`, `file`, `person`, `caption`, `channelId` |
+| `POST /api/data/images/{fileName}/posted` | Перемещает запись: `Images` → `PostedImages` |
 
-## Что перемещает
+### Что перемещает (локальная ФС)
 
 | Откуда | Куда |
 |---|---|
-| `{arts_root}/Check-Images/{file}` | `{arts_root}/Post-Images/{file}` |
+| `{ArtsRootPath}/Check-Images/{file}` | `{ArtsRootPath}/Post-Images/{file}` |
 
 ---
 
 ## Логика работы
 
-1. Загрузить конфиг (`user_settings.json` + `posting_rules.json`)
-2. Загрузить `images.json`, `schedule.json`, `posted_images.json`
-3. **Найти `pending`-слоты** в `schedule.json`
-   - Если слотов нет → сгенерировать их из `posting_rules.json` на `schedule_days` вперёд
-   - Прошедшие слоты пометить `"missed"`, не трогать `"scheduled"`/`"posted"` слоты
-4. Для каждого `pending`-слота **выбрать арт** из `images.json`:
+1. Получить список **активных каналов** из Gateway (`GET /api/data/channels/active`)
+2. Для каждого канала:
+   a. Получить **pending-слоты** (`GET /api/data/schedule/pending?channelId=X`)
+   b. Получить **неопубликованные арты** (`GET /api/data/images?channelId=X&unpostedOnly=true`)
+   c. Получить **правила постинга** (`GET /api/data/rules?channelId=X`)
+   d. Прошедшие слоты пометить `"missed"`, не трогать `"scheduled"`/`"posted"` слоты
+3. Для каждого `pending`-слота **выбрать арт** (`select_art()`):
    - Приоритет: арт с `forced_tag` (если задан в правиле)
    - Иначе: первый неопубликованный арт, персонаж которого отличается от предыдущего
    - Фолбэк: если все оставшиеся арты одного персонажа — взять любой
-5. Подпись берётся из поля `caption` правила, совпавшего с днём и временем слота
-6. Запланировать публикацию в Telegram через `client.send_file(..., schedule=slot_dt)`
-7. Обновить JSON БД:
-   - `schedule.json`: `status="scheduled"`, `file`, `person`, `caption`
-   - `images.json`: удалить запись арта
-   - `posted_images.json`: добавить запись
-   - Переместить файл в `Post-Images`
-8. Ждать `DELAY_BETWEEN_POST_SEC` (5 сек) между постами
+4. Подпись берётся из поля `caption` правила, совпавшего с днём и временем слота
+5. Создать **IPublisher** для канала через `PublisherFactory`:
+   - `publish_mode == "user"` → `TelethonPublisher` (Telethon MTProto)
+   - `publish_mode == "bot"` → `BotApiPublisher` (Bot API через aiohttp)
+6. Запланировать публикацию через `publisher.send_file(..., schedule=slot_dt)`
+7. Обновить данные через Gateway:
+   - Слот: `status="scheduled"`, `file`, `person`, `caption` (`PATCH /api/data/schedule/{key}/status`)
+   - Изображение: перенести в posted (`POST /api/data/images/{fileName}/posted`)
+   - Переместить файл `Check-Images → Post-Images`
+8. Ждать `DelayBetweenPosts` (из настроек канала) между постами
 
 ---
 
-## schedule.json — схема (v2)
+## Мультиканальная публикация
 
-Ключ — ISO datetime со смещением часового пояса.
-
-```json
-{
-  "2026-02-14T19:59:00+03:00": {
-    "date":    "2026-02-14",
-    "time":    "19:59",
-    "status":  "scheduled",
-    "file":    "asuka_langley_0001.jpg",
-    "person":  "#Asuka_Langley",
-    "caption": "Вечерний арт 🌙"
-  },
-  "2026-02-15T07:29:00+03:00": {
-    "date":    "2026-02-15",
-    "time":    "07:29",
-    "status":  "pending",
-    "file":    "",
-    "person":  "",
-    "caption": ""
-  }
-}
+```
+                    ┌─── Channel A (user mode, Telethon) ──► @channel_a
+Publisher Service ──┤
+                    ├─── Channel B (bot mode, Bot API)  ──► @channel_b
+                    │
+                    └─── Channel C (user mode, Telethon) ──► @channel_c
 ```
 
-### Значения статуса
+Каждый канал обрабатывается независимо со своими:
+- Telegram-креденшалами (API ID, API Hash, Bot Token, Session File)
+- Расписанием слотов (привязаны к каналу через ChannelId)
+- Набором артов (привязаны к каналу)
+- Правилами постинга (per-channel)
+- Часовым поясом (для генерации IsoKey)
+
+---
+
+## IPublisher — Strategy Pattern
+
+```
+IPublisher (base.py)
+├── TelethonPublisher (telethon_publisher.py) — user-mode через MTProto
+└── BotApiPublisher (bot_publisher.py) — bot-mode через HTTP Bot API
+```
+
+`PublisherFactory.create_publisher(channel)` — создаёт нужный publisher по `channel.publishMode`.
+
+---
+
+## Значения статуса слота
 
 | Статус | Описание |
 |---|---|
 | `pending` | Слот создан, арт ещё не привязан |
 | `scheduled` | Арт привязан, публикация запланирована в Telegram |
-| `posted` | Опубликовано (выставляется вручную или в будущих версиях) |
+| `posted` | Опубликовано |
 | `missed` | Время слота прошло, арт не был привязан |
 | `error` | Ошибка при отправке в Telegram |
-
----
-
-## posting_rules.json — схема (v2)
-
-```json
-{
-  "version": 2,
-  "rules": [
-    { "time": "07:29", "days": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "caption": "Доброе утро!" },
-    { "time": "19:59", "days": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], "caption": "" },
-    { "time": "08:59", "days": ["Saturday"], "caption": "Шабат шалом!" },
-    { "time": "08:59", "days": ["Sunday"],   "caption": "Доброе утро!" }
-  ]
-}
-```
-
-| Поле | Тип | Описание |
-|---|---|---|
-| `version` | int | Версия формата (текущая: 2) |
-| `rules[].time` | string | Время публикации `"HH:MM"` |
-| `rules[].days` | array[string] | Дни недели на английском (Monday … Sunday) |
-| `rules[].caption` | string | Подпись к посту (может быть пустой) |
-
-> Одно и то же время может встречаться в нескольких правилах с разными днями — это позволяет задавать разные подписи для одного времени в разные дни недели.
 
 ---
 
 ## Настройка через AdminPanel
 
 ### Вкладка «Расписание»
-Прямое редактирование слотов `schedule.json`:
+Прямое редактирование слотов расписания:
 - Добавить / Удалить слот, изменить дату, время, изображение, подпись
-- Кнопка **Применить правила** — генерирует `pending`-слоты по `posting_rules.json`
-- Кнопка **Сохранить** — записывает `schedule.json` на диск
+- Кнопка **Применить правила** — генерирует `pending`-слоты по правилам постинга
+- Кнопка **Сохранить** — записывает данные через Gateway API
 
-Таблица слотов содержит колонки: **Дата · День недели · Время · Изображение · Персонаж · Подпись**
-
-Настройка правил постинга (пишет в `posting_rules.json`):
-- Правила редактируются в нижней панели «Правила постинга»
+Правила постинга:
+- Редактируются в нижней панели «Правила постинга»
 - Кнопка **+ Добавить время** — создаёт новое правило (время + дни + подпись)
 - Кнопка **Сохранить правила**
 
-Параметры расписания (пишет в `user_settings.json`):
-- **Часовой пояс** (`schedule.time_zone`)
-- **Планировать дней** (`schedule.schedule_days`)
-
 ### Вкладка «Микросервисы» → ⚙ Auto-post → `AutopostSettingsWindow`
 
-| Поле в окне | Ключ в user_settings.json | Описание |
+| Поле в окне | Поле канала (Gateway) | Описание |
 |---|---|---|
-| Ссылка на канал | `telegram.channel_link` | `@username` или `-100xxxxxxx` |
-| API ID | `telegram.api_id` | Из my.telegram.org |
-| API Hash | `telegram.api_hash` | Из my.telegram.org |
-| Session file | `telegram.session_file` | Имя `.session` файла (хранится в `%APPDATA%\MAGI\`) |
-| Bot Token | `telegram.bot_token` | Если режим «Бот» (от @BotFather) |
-
-> **Часовой пояс** и **Планировать дней** редактируются **только на вкладке «Расписание»** главного окна.
+| Ссылка на канал | `link` | `@username` или `-100xxxxxxx` |
+| API ID | `apiId` | Из my.telegram.org |
+| API Hash | `apiHash` | Из my.telegram.org |
+| Session file | `sessionFile` | Имя `.session` файла |
+| Bot Token | `botToken` | Если режим «Бот» (от @BotFather) |
 
 ---
 
 ## Зависимости Python
 
 ```
-telethon      # Telegram MTProto клиент
+fastapi       # HTTP-сервер
+uvicorn       # ASGI-сервер
+pydantic      # Валидация данных
+telethon      # Telegram MTProto клиент (user-mode)
 pytz          # Часовые пояса
+aiohttp       # HTTP для Bot API
+requests      # HTTP-клиент
 ```

@@ -37,10 +37,10 @@ MAGI/
 
 | Файл | Кол-во тестов | Что тестирует |
 |------|---------------|---------------|
-| `test_select_art.py` | 8 | Функция `select_art()` из Auto-post: выбор по forced_tag, избегание last_person, fallback, пустой пул, все posted |
-| `test_filename_tagger.py` | 8 | `FilenameTagger.main()`: матчинг ключевых слов, перемещение файлов, пропуск обработанных, множественная обработка, регистронезависимость, пропуск не-изображений |
-| `test_gateway_client.py` | 14 | `GatewayClient`: формирование URL/params/payload, парсинг ответов, health-check, обработка 404/500/ConnectionError |
-| `test_service_endpoints.py` | 9 | FastAPI-эндпоинты `/health`, `/status`, `/stop` для Parser, Tagger, Publisher сервисов через httpx TestClient |
+| `test_select_art.py` | 9 | Функция `select_art()` из Auto-post: выбор по forced_tag, избегание last_person, fallback, пустой пул, все posted, mixed posted |
+| `test_filename_tagger.py` | 10 | `FilenameTagger.main()`: матчинг ключевых слов, перемещение файлов, пропуск обработанных, множественная обработка, регистронезависимость, пропуск не-изображений, получение arts_root из канала |
+| `test_gateway_client.py` | 17 | `GatewayClient`: формирование URL/params/payload, парсинг ответов, health-check, обработка 404/500/ConnectionError, active channels, strips trailing slash |
+| `test_service_endpoints.py` | 10 | FastAPI-эндпоинты `/health`, `/status`, `/run`, `/stop` для Parser, Tagger, Publisher сервисов через httpx TestClient |
 
 ### Python Integration-тесты (`tests/integration/`)
 
@@ -48,7 +48,7 @@ MAGI/
 
 | Файл | Кол-во тестов | Что тестирует |
 |------|---------------|---------------|
-| `test_channel_api.py` | 7 | CRUD каналов (create → get → update → delete), получение 404, parser/tagger config CRUD, filename tags replace, сети каналов |
+| `test_channel_api.py` | 6 | CRUD каналов (create → get → update → delete), получение 404, parser/tagger config CRUD, filename tags replace, сети каналов |
 | `test_schedule_api.py` | 9 | Создание/обновление/удаление слотов, нормализация времени, CRUD изображений, mark as posted, download records, правила публикации, health-эндпоинты |
 
 ### Python Scenario-тесты (`tests/scenarios/`)
@@ -66,8 +66,8 @@ MAGI/
 
 | Файл | Кол-во тестов | Что тестирует |
 |------|---------------|---------------|
-| `ChannelServiceTests.cs` | 12 | Создание канала с автогенерацией ID, дефолтные конфиги, GetAll, Update partial fields, каскадное удаление, CRUD parser/tagger config, filename tags (replace, skip empty), сети (create, delete unlinks channels) |
-| `DataServiceTests.cs` | 13 | CRUD изображений, фильтрация по каналу, upsert, mark posted (перемещение images→posted), unposted count, слоты расписания (create, normalize time, update status), download records (дедупликация, фильтрация по source), posting rules (add, replace), active channels filter |
+| `ChannelServiceTests.cs` | 14 | Создание канала с автогенерацией ID, дефолтные конфиги, GetAll, Update partial fields, каскадное удаление (включая FilenameTags), CRUD parser/tagger config, filename tags (replace, skip empty), сети (create, delete unlinks channels) |
+| `DataServiceTests.cs` | 17 | CRUD изображений, фильтрация по каналу, upsert, mark posted (перемещение images→posted), unposted count, слоты расписания (create, normalize time, update status, **изоляция слотов между каналами**), download records (дедупликация, фильтрация по source), posting rules (add, replace), active channels filter |
 
 ---
 

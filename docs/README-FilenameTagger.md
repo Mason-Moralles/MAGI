@@ -1,7 +1,7 @@
 # FilenameTagger — Микросервис тегирования
 
 Сканирует папку `New-Images`, по ключевым словам в имени файла определяет персонажа,
-записывает метаданные в `images.json` и перемещает файл в `Check-Images`.
+записывает метаданные в базу данных через Gateway и перемещает файл в `Check-Images`.
 
 ---
 
@@ -10,9 +10,9 @@
 | Файл | Описание |
 |---|---|
 | `FilenameTagger/service.py` | FastAPI HTTP-сервер (порт 5002) |
-| `FilenameTagger/FilenameTagger.py` | Основной скрипт тегирования |
+| `FilenameTagger/FilenameTagger.py` | Основной скрипт тегирования (v2.0) |
 | `FilenameTagger/requirements.txt` | Зависимости Python |
-| `config/config_loader.py` | Импортируется для загрузки путей |
+| `config/gateway_client.py` | HTTP-клиент для взаимодействия с Gateway |
 
 ---
 
@@ -48,89 +48,92 @@ POST http://localhost:5000/api/tagger/run
 
 ---
 
-## Что читает
+## Источники данных
 
-| Файл | Что берёт |
+Все данные читаются и записываются **через API Gateway** (HTTP REST → SQLite).
+
+### Что читает (из Gateway)
+
+| Endpoint | Что берёт |
 |---|---|
-| `%APPDATA%\MAGI\user_settings.json` | `paths.project_root`, `paths.arts_root` → для построения путей |
-| `data/json/FilenameTagger/filename_tags.json` | Маппинг: ключевое слово в имени файла → хэштег персонажа |
-| `data/json/images/images.json` | Существующие записи (чтобы не перезаписывать уже обработанные) |
-| `{arts_root}/New-Images/*.jpg/.png/.jpeg` | Файлы для обработки |
+| `GET /api/channel/{id}` | Данные канала (`ArtsRootPath` → пути к папкам) |
+| `GET /api/channel/{id}/filename-tags` | Маппинг: ключевое слово → хэштег персонажа (per-channel) |
+| `GET /api/data/images?channelId=X` | Существующие записи (чтобы не перезаписывать уже обработанные) |
 
-## Что пишет
+### Что читает (локальная ФС)
 
-| Файл | Что записывает |
+| Путь | Описание |
 |---|---|
-| `data/json/images/images.json` | Новые записи: `{ "person": "#Tag", "posted": 0 }` |
+| `{ArtsRootPath}/New-Images/*.jpg/.png/.jpeg` | Файлы для обработки |
 
-## Что перемещает
+### Что пишет (в Gateway)
+
+| Endpoint | Что записывает |
+|---|---|
+| `POST /api/data/images` | Новая запись изображения: `{ fileName, person: "#Tag", posted: 0, channelId }` |
+
+### Что перемещает (локальная ФС)
 
 | Откуда | Куда |
 |---|---|
-| `{arts_root}/New-Images/{file}` | `{arts_root}/Check-Images/{file}` |
+| `{ArtsRootPath}/New-Images/{file}` | `{ArtsRootPath}/Check-Images/{file}` |
 
 ---
 
 ## Логика работы
 
-1. Загрузить конфиг → определить пути `new_images_dir`, `check_images_dir`, `images_json`
-2. Загрузить `filename_tags.json` (маппинг ключевых слов)
-3. Загрузить существующий `images.json`
-4. Для каждого файла в `New-Images`:
-   - Пропустить не-изображения
-   - Если файл уже есть в `images.json` с заполненным `person` → пропустить
-   - Перебрать ключевые слова из `filename_tags.json`
-   - Если ключевое слово найдено в имени файла → записать запись в `images.json`
+1. Получить данные канала из Gateway → определить `ArtsRootPath`
+2. Построить пути: `new_images_dir = ArtsRootPath/New-Images`, `check_images_dir = ArtsRootPath/Check-Images`
+3. Получить filename-теги из Gateway (`GET /api/channel/{id}/filename-tags`)
+4. Получить существующие записи изображений из Gateway
+5. Для каждого файла в `New-Images`:
+   - Пропустить не-изображения (не `.jpg`, `.png`, `.jpeg`)
+   - Если файл уже есть в БД с заполненным `person` → пропустить
+   - Перебрать ключевые слова из filename-тегов
+   - Если ключевое слово найдено в имени файла (регистронезависимо) → записать в Gateway через `POST /api/data/images`
    - Переместить файл `New-Images → Check-Images`
-5. Сохранить обновлённый `images.json`
+6. Вернуть количество обработанных файлов
 
-> **Важно:** если ни одно ключевое слово не совпало — файл остаётся в `New-Images` и не попадает в `images.json`. Нужно добавить нужное слово в `filename_tags.json`.
-
----
-
-## filename_tags.json — схема и содержимое
-
-Ключ — подстрока в нижнем регистре имени файла. Значение — хэштег персонажа.
-
-```json
-{
-  "shinji":    "#Shinji_Ikari",
-  "gendo":     "#Gendo_Ikari",
-  "綾波レイ":   "#Rei_Ayanami",
-  "rei":       "#Rei_Ayanami",
-  "ayanami":   "#Rei_Ayanami",
-  "asuka":     "#Asuka_Langley",
-  "langley":   "#Asuka_Langley",
-  "misato":    "#Misato_Katsuragi",
-  "katsuragi": "#Misato_Katsuragi",
-  "ritsuko":   "#Ritsuko_Akagi",
-  "akagi":     "#Ritsuko_Akagi",
-  "mari":      "#Mari_Makinami",
-  "makinami":  "#Mari_Makinami"
-}
-```
-
-> Файл редактируется **вручную** — в AdminPanel нет отдельного окна для этого.
+> **Важно:** если ни одно ключевое слово не совпало — файл остаётся в `New-Images` и не попадает в БД. Нужно добавить нужное ключевое слово в filename-теги канала.
 
 ---
 
-## images.json — запись после FilenameTagger
+## Filename-теги
 
-```json
-{
-  "asuka_langley_0001.jpg": {
-    "person": "#Asuka_Langley",
-    "posted": 0
-  }
-}
-```
+Маппинг хранится в БД (таблица `FilenameTags`), привязан к конкретному каналу.
+Ключ — подстрока для поиска (регистронезависимо). Значение — хэштег персонажа.
 
-| Поле | Тип | Кто пишет | Описание |
-|---|---|---|---|
-| `person` | string | FilenameTagger | Хэштег персонажа из filename_tags.json |
-| `posted` | int (0/1) | — | Всегда 0; запись удаляется из файла после того как Auto-post забирает арт |
+Пример тегов:
 
-> После планирования публикации Auto-post **удаляет** запись из `images.json`. Детали публикации (время, подпись) сохраняются в `posted_images.json`.
+| Keyword | Tag |
+|---|---|
+| `shinji` | `#Shinji_Ikari` |
+| `rei` | `#Rei_Ayanami` |
+| `ayanami` | `#Rei_Ayanami` |
+| `asuka` | `#Asuka_Langley` |
+| `langley` | `#Asuka_Langley` |
+| `misato` | `#Misato_Katsuragi` |
+| `mari` | `#Mari_Makinami` |
+| `綾波レイ` | `#Rei_Ayanami` |
+
+**Управление через AdminPanel:** вкладка **Микросервисы** → ⚙ Tagger → `TaggerSettingsWindow` → секция «Filename Tags».
+
+**API:** `PUT /api/channel/{id}/filename-tags` — **полная замена** всех тегов канала.
+
+---
+
+## Результат тегирования (запись в Images)
+
+После обработки файла `asuka_langley_0001.jpg` в БД создаётся запись:
+
+| Поле | Значение |
+|---|---|
+| `FileName` | `asuka_langley_0001.jpg` |
+| `Person` | `#Asuka_Langley` |
+| `Posted` | `0` |
+| `ChannelId` | `<id канала>` |
+
+> После планирования публикации Publisher **перемещает** запись из `Images` в `PostedImages`.
 
 ---
 
@@ -138,11 +141,21 @@ POST http://localhost:5000/api/tagger/run
 
 Вкладка **Микросервисы** → кнопка ⚙ рядом с **Tagger** → окно `TaggerSettingsWindow`:
 
-| Поле в окне | Ключ в user_settings.json | Описание |
+| Поле | Поле конфига (Gateway) | Описание |
 |---|---|---|
-| Шаблон переименования | `tagger.rename_template` | Шаблон имени файла (не используется FilenameTagger.py) |
-| Разделитель | `tagger.separator` | Разделитель в имени |
-| Только новые | `tagger.only_new` | Обрабатывать только необработанные |
-| Режим | `tagger.mode` | `rename` или `copy` |
+| Шаблон переименования | `renameTemplate` | Шаблон имени файла |
+| Разделитель | `separator` | Разделитель в имени |
+| Только новые | `onlyNew` | Обрабатывать только необработанные |
+| Режим | `mode` | `rename` или `copy` |
 
-> Эти поля сохраняются в `user_settings.json["tagger"]`, но **текущая версия FilenameTagger.py их не использует** — он работает только через `config_loader` и `filename_tags.json`.
+Filename-теги редактируются в отдельной секции того же окна.
+
+---
+
+## Зависимости Python
+
+```
+fastapi       # HTTP-сервер
+uvicorn       # ASGI-сервер
+pydantic      # Валидация данных
+```

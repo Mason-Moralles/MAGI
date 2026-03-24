@@ -37,8 +37,8 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 
 | Сервис | Настройки (кнопка) | Источник конфига |
 |---|---|---|
-| Parser Pinterest/Pixiv | `ParserSettingsWindow` | Gateway: `ChannelParserConfig` (fallback: JSON) |
-| Tagger | `TaggerSettingsWindow` | Gateway: `ChannelTaggerConfig` (fallback: JSON) |
+| Parser Pinterest/Pixiv | `ParserSettingsWindow` | Gateway: `ChannelParserConfig` |
+| Tagger | `TaggerSettingsWindow` | Gateway: `ChannelTaggerConfig` |
 | Auto-post | `AutopostSettingsWindow` | Gateway: данные канала |
 
 Все сервисы запускаются с `channelId` в body запроса к Gateway.
@@ -71,14 +71,14 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 
 Управление расписанием публикаций и правилами постинга.
 
-**Источник данных:** Gateway API (`GET /api/schedule?channelId=...`), fallback: JSON
+**Источник данных:** Gateway API (`GET /api/schedule?channelId=...`)
 
 Столбцы: **Дата / День недели / Время / Изображение / Персонаж / Подпись**
 
 | Действие | Результат |
 |---|---|
 | Добавить / Изменить / Удалить слот | Редактирование в памяти |
-| Сохранить | Запись через Gateway API (с channelId) или JSON |
+| Сохранить | Запись через Gateway API (с channelId) |
 | Применить правила | Генерация `pending`-слотов по правилам постинга |
 
 #### Панель правил постинга
@@ -96,7 +96,7 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 ## Окна настроек
 
 ### ParserSettingsWindow
-**Источник:** Gateway `GET /api/channel/{id}/parser-config` (fallback: `data/json/Parser/config.json`)
+**Источник:** Gateway `GET /api/channel/{id}/parser-config`
 
 | Поле | Ключ |
 |---|---|
@@ -108,7 +108,7 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 | Задержка загрузки (мс) | `imageLoadDelayMs` |
 
 ### TaggerSettingsWindow
-**Источник:** Gateway `GET /api/channel/{id}/tagger-config` (fallback: `user_settings.json -> tagger`)
+**Источник:** Gateway `GET /api/channel/{id}/tagger-config`
 
 | Поле | Ключ |
 |---|---|
