@@ -80,7 +80,6 @@ public class DataMigrationService
                 Person = GetString(kv.Value, "person"),
                 Posted = GetInt(kv.Value, "posted"),
                 Caption = GetString(kv.Value, "caption") ?? "",
-                PostTime = GetString(kv.Value, "post_time"),
                 CreatedAt = DateTime.UtcNow
             });
             count++;

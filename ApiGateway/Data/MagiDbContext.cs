@@ -22,6 +22,8 @@ public class MagiDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // ─── Unique Indexes ───
+
         // Images: уникальный FileName
         modelBuilder.Entity<ImageEntity>()
             .HasIndex(e => e.FileName)
@@ -32,36 +34,74 @@ public class MagiDbContext : DbContext
             .HasIndex(e => e.FileName)
             .IsUnique();
 
-        // ScheduleSlots: уникальный IsoKey
+        // ScheduleSlots: уникальный (IsoKey + ChannelId) — разные каналы могут иметь слоты в одно время
         modelBuilder.Entity<ScheduleSlotEntity>()
-            .HasIndex(e => e.IsoKey)
+            .HasIndex(e => new { e.IsoKey, e.ChannelId })
             .IsUnique();
+
+        // Индекс по IsoKey (не уникальный) для быстрого поиска
+        modelBuilder.Entity<ScheduleSlotEntity>()
+            .HasIndex(e => e.IsoKey);
+
+        // Индекс по ChannelId для фильтрации
+        modelBuilder.Entity<ScheduleSlotEntity>()
+            .HasIndex(e => e.ChannelId);
 
         // DownloadRecords: уникальный SourceUrl
         modelBuilder.Entity<DownloadRecordEntity>()
             .HasIndex(e => e.SourceUrl)
             .IsUnique();
 
-        // Channels: индекс по NetworkId
+        // ─── FK: Channel → Network (логическая, без каскада) ───
+
         modelBuilder.Entity<ChannelEntity>()
             .HasIndex(e => e.NetworkId);
 
-        // PostingRules: индекс по ChannelId
-        modelBuilder.Entity<PostingRuleEntity>()
-            .HasIndex(e => e.ChannelId);
+        // ─── FK: ChannelParserConfigs → Channels (1:1) ───
 
-        // ChannelParserConfigs: уникальный ChannelId (1:1)
         modelBuilder.Entity<ChannelParserConfigEntity>()
             .HasIndex(e => e.ChannelId)
             .IsUnique();
 
-        // ChannelTaggerConfigs: уникальный ChannelId (1:1)
+        modelBuilder.Entity<ChannelParserConfigEntity>()
+            .HasOne<ChannelEntity>()
+            .WithOne()
+            .HasForeignKey<ChannelParserConfigEntity>(e => e.ChannelId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── FK: ChannelTaggerConfigs → Channels (1:1) ───
+
         modelBuilder.Entity<ChannelTaggerConfigEntity>()
             .HasIndex(e => e.ChannelId)
             .IsUnique();
 
-        // FilenameTags: индекс по ChannelId (1:many)
+        modelBuilder.Entity<ChannelTaggerConfigEntity>()
+            .HasOne<ChannelEntity>()
+            .WithOne()
+            .HasForeignKey<ChannelTaggerConfigEntity>(e => e.ChannelId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── FK: FilenameTags → Channels (1:N) ───
+
         modelBuilder.Entity<FilenameTagEntity>()
             .HasIndex(e => e.ChannelId);
+
+        modelBuilder.Entity<FilenameTagEntity>()
+            .HasOne<ChannelEntity>()
+            .WithMany()
+            .HasForeignKey(e => e.ChannelId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ─── FK: PostingRules → Channels (1:N, optional) ───
+
+        modelBuilder.Entity<PostingRuleEntity>()
+            .HasIndex(e => e.ChannelId);
+
+        modelBuilder.Entity<PostingRuleEntity>()
+            .HasOne<ChannelEntity>()
+            .WithMany()
+            .HasForeignKey(e => e.ChannelId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

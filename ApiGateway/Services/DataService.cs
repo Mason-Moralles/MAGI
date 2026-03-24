@@ -66,7 +66,6 @@ public class DataService
                 FileName = e.FileName,
                 Person = e.Person,
                 Posted = e.Posted,
-                PostTime = e.PostTime,
                 Caption = e.Caption,
                 ChannelId = e.ChannelId
             })
@@ -89,7 +88,6 @@ public class DataService
             FileName = e.FileName,
             Person = e.Person,
             Posted = e.Posted,
-            PostTime = e.PostTime,
             Caption = e.Caption,
             ChannelId = e.ChannelId
         };
@@ -180,7 +178,6 @@ public class DataService
                 FileName = e.FileName,
                 Person = e.Person,
                 Posted = 1,
-                PostTime = e.PostedAt,
                 Caption = e.Caption,
                 ChannelId = e.ChannelId
             })
@@ -214,10 +211,14 @@ public class DataService
             .ToListAsync();
     }
 
-    public async Task<ScheduleSlotDto?> GetScheduleSlotAsync(string isoKey)
+    public async Task<ScheduleSlotDto?> GetScheduleSlotAsync(string isoKey, string? channelId = null)
     {
         await using var ctx = CreateDb();
-        var e = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        ScheduleSlotEntity? e;
+        if (channelId != null)
+            e = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey && s.ChannelId == channelId);
+        else
+            e = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
         if (e == null) return null;
         return new ScheduleSlotDto
         {
@@ -260,14 +261,14 @@ public class DataService
             : request.Time;
         var isoKey = $"{request.Date}T{normalizedTime}:00{tzOffset}";
 
-        // Upsert: если слот с таким IsoKey уже есть — обновляем вместо ошибки
-        var existing = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        // Upsert: ищем по паре (IsoKey + ChannelId) — разные каналы могут иметь слоты в одно время
+        var existing = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
+            s => s.IsoKey == isoKey && s.ChannelId == request.ChannelId);
         if (existing != null)
         {
             existing.Date = request.Date;
             existing.Time = request.Time;
             existing.Caption = request.Caption ?? "";
-            if (request.ChannelId != null) existing.ChannelId = request.ChannelId;
             await ctx.Db.SaveChangesAsync();
 
             return new ScheduleSlotDto
@@ -308,22 +309,33 @@ public class DataService
     public async Task<bool> UpdateScheduleSlotAsync(string isoKey, ScheduleSlotRequest request)
     {
         await using var ctx = CreateDb();
-        var entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        // Ищем по (IsoKey + ChannelId) если ChannelId указан
+        ScheduleSlotEntity? entity;
+        if (request.ChannelId != null)
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
+                s => s.IsoKey == isoKey && s.ChannelId == request.ChannelId);
+        else
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
         if (entity == null) return false;
 
         entity.Date = request.Date;
         entity.Time = request.Time;
         entity.Caption = request.Caption ?? "";
-        if (request.ChannelId != null) entity.ChannelId = request.ChannelId;
         await ctx.Db.SaveChangesAsync();
         return true;
     }
 
     public async Task<bool> UpdateScheduleSlotStatusAsync(
-        string isoKey, string status, string? file = null, string? person = null, string? caption = null)
+        string isoKey, string status, string? file = null, string? person = null,
+        string? caption = null, string? channelId = null)
     {
         await using var ctx = CreateDb();
-        var entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        ScheduleSlotEntity? entity;
+        if (channelId != null)
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
+                s => s.IsoKey == isoKey && s.ChannelId == channelId);
+        else
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
         if (entity == null) return false;
 
         entity.Status = status;
@@ -334,10 +346,15 @@ public class DataService
         return true;
     }
 
-    public async Task<bool> DeleteScheduleSlotAsync(string isoKey)
+    public async Task<bool> DeleteScheduleSlotAsync(string isoKey, string? channelId = null)
     {
         await using var ctx = CreateDb();
-        var entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        ScheduleSlotEntity? entity;
+        if (channelId != null)
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
+                s => s.IsoKey == isoKey && s.ChannelId == channelId);
+        else
+            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
         if (entity == null) return false;
 
         ctx.Db.ScheduleSlots.Remove(entity);

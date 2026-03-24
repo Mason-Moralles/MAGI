@@ -119,7 +119,7 @@ public class DataController : ControllerBase
     {
         var decoded = Uri.UnescapeDataString(isoKey);
         var result = await _dataService.UpdateScheduleSlotStatusAsync(
-            decoded, request.Status, request.File, request.Person, request.Caption);
+            decoded, request.Status, request.File, request.Person, request.Caption, request.ChannelId);
         return result
             ? Ok(ApiResponse.Ok("Slot status updated"))
             : NotFound(ApiResponse.Error($"Slot not found: {decoded}"));
@@ -250,6 +250,7 @@ public class UpdateSlotStatusRequest
     public string? File { get; set; }
     public string? Person { get; set; }
     public string? Caption { get; set; }
+    public string? ChannelId { get; set; }
 }
 
 public class AddDownloadRequest

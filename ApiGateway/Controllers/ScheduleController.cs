@@ -32,10 +32,10 @@ public class ScheduleController : ControllerBase
     /// Получить слот по ISO-ключу.
     /// </summary>
     [HttpGet("{isoKey}")]
-    public async Task<ActionResult<ApiResponse<ScheduleSlotDto>>> GetByKey(string isoKey)
+    public async Task<ActionResult<ApiResponse<ScheduleSlotDto>>> GetByKey(string isoKey, [FromQuery] string? channelId = null)
     {
         var decoded = Uri.UnescapeDataString(isoKey);
-        var slot = await _dataService.GetScheduleSlotAsync(decoded);
+        var slot = await _dataService.GetScheduleSlotAsync(decoded, channelId);
         if (slot == null)
             return NotFound(ApiResponse.Error($"Slot not found: {decoded}"));
 
@@ -74,10 +74,10 @@ public class ScheduleController : ControllerBase
     /// Удалить слот.
     /// </summary>
     [HttpDelete("{isoKey}")]
-    public async Task<ActionResult<ApiResponse>> Delete(string isoKey)
+    public async Task<ActionResult<ApiResponse>> Delete(string isoKey, [FromQuery] string? channelId = null)
     {
         var decoded = Uri.UnescapeDataString(isoKey);
-        var deleted = await _dataService.DeleteScheduleSlotAsync(decoded);
+        var deleted = await _dataService.DeleteScheduleSlotAsync(decoded, channelId);
         if (!deleted)
             return NotFound(ApiResponse.Error($"Slot not found: {decoded}"));
 
@@ -97,7 +97,8 @@ public class ScheduleController : ControllerBase
         {
             Date = request.Date,
             Time = request.Time,
-            Caption = request.Caption
+            Caption = request.Caption,
+            ChannelId = request.ChannelId
         };
         var updated = await _dataService.UpdateScheduleSlotAsync(request.IsoKey, slotReq);
         if (!updated)
@@ -115,7 +116,7 @@ public class ScheduleController : ControllerBase
         if (string.IsNullOrEmpty(request.IsoKey))
             return BadRequest(ApiResponse.Error("IsoKey is required"));
 
-        var deleted = await _dataService.DeleteScheduleSlotAsync(request.IsoKey);
+        var deleted = await _dataService.DeleteScheduleSlotAsync(request.IsoKey, request.ChannelId);
         if (!deleted)
             return NotFound(ApiResponse.Error($"Slot not found: {request.IsoKey}"));
 

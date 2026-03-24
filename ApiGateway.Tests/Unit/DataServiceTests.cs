@@ -162,15 +162,66 @@ public class DataServiceTests
         });
 
         var updated = await _svc.UpdateScheduleSlotStatusAsync(
-            slot.IsoKey, "scheduled", file: "art.jpg", person: "#A"
+            slot.IsoKey, "scheduled", file: "art.jpg", person: "#A", channelId: channel.Id
         );
         Assert.True(updated);
 
-        var fetched = await _svc.GetScheduleSlotAsync(slot.IsoKey);
+        var fetched = await _svc.GetScheduleSlotAsync(slot.IsoKey, channel.Id);
         Assert.Equal("scheduled", fetched!.Status);
         Assert.Equal("art.jpg", fetched.File);
 
         await _channelSvc.DeleteChannelAsync(channel.Id);
+    }
+
+    [Fact]
+    public async Task CreateScheduleSlot_TwoChannelsSameTime_NoCrossOverwrite()
+    {
+        // Два канала с одинаковым временем — слоты НЕ должны перезаписывать друг друга
+        var ch1 = await _channelSvc.CreateChannelAsync(new CreateChannelRequest
+        {
+            Name = "Channel A", Link = "@ch_a", TimeZone = "Europe/Moscow",
+        });
+        var ch2 = await _channelSvc.CreateChannelAsync(new CreateChannelRequest
+        {
+            Name = "Channel B", Link = "@ch_b", TimeZone = "Europe/Moscow",
+        });
+
+        var slot1 = await _svc.CreateScheduleSlotAsync(new ScheduleSlotRequest
+        {
+            Date = "2026-07-01", Time = "12:00", ChannelId = ch1.Id, Caption = "Channel A post"
+        });
+        var slot2 = await _svc.CreateScheduleSlotAsync(new ScheduleSlotRequest
+        {
+            Date = "2026-07-01", Time = "12:00", ChannelId = ch2.Id, Caption = "Channel B post"
+        });
+
+        // Оба слота должны существовать
+        Assert.Equal(slot1.IsoKey, slot2.IsoKey); // одинаковый IsoKey
+        Assert.NotEqual(slot1.ChannelId, slot2.ChannelId);
+
+        // Проверяем что оба слота доступны по (IsoKey + ChannelId)
+        var fetched1 = await _svc.GetScheduleSlotAsync(slot1.IsoKey, ch1.Id);
+        var fetched2 = await _svc.GetScheduleSlotAsync(slot2.IsoKey, ch2.Id);
+
+        Assert.NotNull(fetched1);
+        Assert.NotNull(fetched2);
+        Assert.Equal("Channel A post", fetched1!.Caption);
+        Assert.Equal("Channel B post", fetched2!.Caption);
+
+        // Проверяем фильтрацию по каналу
+        var ch1Slots = await _svc.GetScheduleAsync(ch1.Id);
+        var ch2Slots = await _svc.GetScheduleAsync(ch2.Id);
+        Assert.Contains(ch1Slots, s => s.Caption == "Channel A post");
+        Assert.Contains(ch2Slots, s => s.Caption == "Channel B post");
+
+        // Удаление одного слота не затрагивает другой
+        await _svc.DeleteScheduleSlotAsync(slot1.IsoKey, ch1.Id);
+        var stillExists = await _svc.GetScheduleSlotAsync(slot2.IsoKey, ch2.Id);
+        Assert.NotNull(stillExists);
+        Assert.Equal("Channel B post", stillExists!.Caption);
+
+        await _channelSvc.DeleteChannelAsync(ch1.Id);
+        await _channelSvc.DeleteChannelAsync(ch2.Id);
     }
 
     [Fact]

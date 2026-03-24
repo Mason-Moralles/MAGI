@@ -35,6 +35,7 @@ public class ScheduleSlotUpdateRequest
     public string Date { get; set; } = "";
     public string Time { get; set; } = "";
     public string? Caption { get; set; }
+    public string? ChannelId { get; set; }
 }
 
 /// <summary>
@@ -43,6 +44,7 @@ public class ScheduleSlotUpdateRequest
 public class ScheduleSlotDeleteRequest
 {
     public string IsoKey { get; set; } = "";
+    public string? ChannelId { get; set; }
 }
 
 /// <summary>
@@ -64,7 +66,6 @@ public class ImageDto
     public string FileName { get; set; } = "";
     public string? Person { get; set; }
     public int Posted { get; set; }
-    public string? PostTime { get; set; }
     public string Caption { get; set; } = "";
     public string? ChannelId { get; set; }
 }

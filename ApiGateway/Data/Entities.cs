@@ -27,10 +27,6 @@ public class ImageEntity
     [MaxLength(1000)]
     public string Caption { get; set; } = "";
 
-    /// <summary>Время публикации (ISO).</summary>
-    [MaxLength(50)]
-    public string? PostTime { get; set; }
-
     /// <summary>ID канала, к которому привязан арт (для масштабирования).</summary>
     [MaxLength(50)]
     public string? ChannelId { get; set; }

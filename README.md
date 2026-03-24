@@ -368,3 +368,5 @@ Python-сервисы получают `channelId` и загружают per-cha
 | [FilenameTagger](docs/README-FilenameTagger.md) | Маппинг тегов, алгоритм тегирования |
 | [Auto-post](docs/README-Autopost.md) | Расписание, IPublisher, мультиканальная публикация |
 | [Testing](docs/README-Testing.md) | Python Unit-тесты, Integration-тесты, Scenario; C# xUnit-тесты |
+| [DataBase](docs/README-DB.md) | Архитектура данных |
+

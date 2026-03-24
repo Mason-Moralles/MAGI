@@ -25,7 +25,7 @@ builder.Services.AddSwaggerGen(options =>
 var dbPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data", "magi.db");
 dbPath = Path.GetFullPath(dbPath);
 builder.Services.AddDbContext<MagiDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseSqlite($"Data Source={dbPath};Foreign Keys=True"));
 
 // HTTP-клиент для Python-сервисов
 builder.Services.AddHttpClient<PythonServiceClient>();
