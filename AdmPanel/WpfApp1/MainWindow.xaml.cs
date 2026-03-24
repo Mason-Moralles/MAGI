@@ -13,16 +13,29 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using MAGIAdmin.Services;
 using Newtonsoft.Json.Linq;
 
 namespace MAGIAdmin
 {
     public partial class MainWindow : Window
     {
+        // ─── Gateway API client ───
+        private readonly GatewayApiClient _api;
+        private readonly DispatcherTimer _healthTimer;
+        private bool _gatewayConnected;
+
+        // ─── Global channel context ───
+        private List<ChannelSelectorItem> _channels = new List<ChannelSelectorItem>();
+        private string _selectedChannelId;
+        private string _selectedChannelArtsRoot;
+
         // ─── Paths ───
         private readonly string AppDataDir =
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MAGI");
 
+        // Legacy paths kept only for one-time migration detection
         private string UserSettingsPath => Path.Combine(AppDataDir, "user_settings.json");
         private string PostingRulesPath => Path.Combine(AppDataDir, "posting_rules.json");
 
@@ -53,10 +66,19 @@ namespace MAGIAdmin
         {
             InitializeComponent();
 
-            Loaded += (_, __) =>
+            _api = new GatewayApiClient();
+
+            // Health check timer — проверяем Gateway каждые 10 секунд
+            _healthTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            _healthTimer.Tick += async (_, __) => await CheckGatewayHealthAsync();
+            _healthTimer.Start();
+
+            Loaded += async (_, __) =>
             {
                 _uiReady = true;
                 NavList_SelectionChanged(NavList, null); // применить видимость страниц после полной загрузки
+                await CheckGatewayHealthAsync();
+                await LoadChannelSelectorAsync();
             };
 
             LogListView.ItemsSource = _logs;
@@ -69,22 +91,164 @@ namespace MAGIAdmin
             AddLog("Admin", "INFO", "MAGI Admin Panel started");
         }
 
-        private void LoadInitialData()
+        // ════════════════════════════════════════
+        //  GATEWAY HEALTH CHECK
+        // ════════════════════════════════════════
+
+        private async Task CheckGatewayHealthAsync()
         {
             try
             {
-                var json = LoadUserSettings();
-                var artsRoot = json["paths"]?["arts_root"]?.ToString() ?? "";
-                TbArtsPath.Text = artsRoot;
-
-                // Load schedule_days into the rules panel field
-                var schedSection = json["schedule"] as JObject;
-                var days = schedSection?["schedule_days"]?.ToString() ?? "7";
-                TbScheduleDaysRules.Text = days;
+                _gatewayConnected = await _api.IsAvailableAsync();
             }
-            catch { TbScheduleDaysRules.Text = "7"; }
+            catch
+            {
+                _gatewayConnected = false;
+            }
 
+            Dispatcher.Invoke(() =>
+            {
+                if (_gatewayConnected)
+                {
+                    GatewayStatusDot.Fill = new SolidColorBrush(Color.FromRgb(50, 200, 50));
+                    GatewayStatusText.Text = "Gateway: Подключен";
+                }
+                else
+                {
+                    GatewayStatusDot.Fill = new SolidColorBrush(Colors.Red);
+                    GatewayStatusText.Text = "Gateway: Недоступен";
+                }
+            });
+        }
+
+        private async void ChannelManagement_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_gatewayConnected)
+            {
+                MessageBox.Show("API Gateway недоступен. Запустите Gateway для управления каналами.",
+                    "Gateway недоступен", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var win = new ChannelManagementWindow { Owner = this };
+            win.ShowDialog();
+            // Обновляем список каналов после закрытия окна управления
+            await LoadChannelSelectorAsync();
+        }
+
+        // ════════════════════════════════════════
+        //  GLOBAL CHANNEL SELECTOR
+        // ════════════════════════════════════════
+
+        private async Task LoadChannelSelectorAsync()
+        {
+            if (!_gatewayConnected) return;
+
+            try
+            {
+                var channels = await _api.GetChannelsAsync();
+                var prevSelectedId = _selectedChannelId;
+
+                _channels.Clear();
+                foreach (var ch in channels)
+                {
+                    _channels.Add(new ChannelSelectorItem
+                    {
+                        Id = ch["id"]?.ToString() ?? "",
+                        Name = ch["name"]?.ToString() ?? "Без имени",
+                        ArtsRootPath = ch["artsRootPath"]?.ToString() ?? "",
+                        IsActive = ch["isActive"]?.Value<bool>() ?? true
+                    });
+                }
+
+                ChannelSelector.ItemsSource = null;
+                ChannelSelector.ItemsSource = _channels;
+
+                if (_channels.Count > 0)
+                {
+                    // Восстанавливаем предыдущий выбор или берём первый
+                    var toSelect = _channels.FirstOrDefault(c => c.Id == prevSelectedId)
+                                   ?? _channels[0];
+                    ChannelSelector.SelectedItem = toSelect;
+                }
+                else
+                {
+                    ChannelInfoText.Text = "Нет каналов. Создайте канал через «Каналы».";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Channel selector load error: {ex.Message}");
+            }
+        }
+
+        private void ChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ChannelSelector.SelectedItem is ChannelSelectorItem ch)
+            {
+                _selectedChannelId = ch.Id;
+                _selectedChannelArtsRoot = ch.ArtsRootPath;
+                ChannelInfoText.Text = string.IsNullOrEmpty(ch.ArtsRootPath)
+                    ? $"ID: {ch.Id}"
+                    : $"ID: {ch.Id} | Арты: {ch.ArtsRootPath}";
+
+                // Перезагружаем данные для выбранного канала
+                if (_uiReady)
+                    OnChannelChanged();
+            }
+        }
+
+        private async void RefreshChannels_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadChannelSelectorAsync();
+        }
+
+        private void OnChannelChanged()
+        {
+            // При смене канала перезагружаем данные на активных вкладках
+            AddLog("Admin", "INFO", $"Канал переключён: {_selectedChannelId}");
+
+            // Если канал не выбран — очищаем всё
+            if (string.IsNullOrEmpty(_selectedChannelId))
+            {
+                _allImages.Clear();
+                _filteredImages.Clear();
+                _allSlots.Clear();
+                _filteredSlots.Clear();
+                _postTimes.Clear();
+                TbArtsPath.Text = "";
+                return;
+            }
+
+            // Обновляем путь к артам из выбранного канала
+            TbArtsPath.Text = !string.IsNullOrEmpty(_selectedChannelArtsRoot)
+                ? _selectedChannelArtsRoot : "";
+
+            // Перезагружаем posting rules для нового канала
             LoadPostingRules();
+
+            // Перезагружаем данные текущей вкладки
+            switch (NavList.SelectedIndex)
+            {
+                case 1:
+                    LoadArtsGallery();
+                    break;
+                case 2:
+                    LoadSchedule();
+                    break;
+            }
+        }
+
+        private void LoadInitialData()
+        {
+            // schedule_days — простая UI-настройка, храним в Properties.Settings
+            TbScheduleDaysRules.Text = Properties.Settings.Default.ScheduleDays > 0
+                ? Properties.Settings.Default.ScheduleDays.ToString()
+                : "7";
+
+            // TbArtsPath заполняется при выборе канала
+            TbArtsPath.Text = "";
+
+            // Posting rules загружаются при выборе канала из Gateway
         }
 
         // ════════════════════════════════════════
@@ -116,44 +280,28 @@ namespace MAGIAdmin
         }
 
         // ════════════════════════════════════════
-        //  JSON HELPERS
+        //  HELPERS
         // ════════════════════════════════════════
 
-        private JObject LoadUserSettings()
+        /// <summary>
+        /// Legacy: читает user_settings.json. Используется ТОЛЬКО для однократной миграции.
+        /// </summary>
+        private JObject LoadUserSettingsLegacy()
         {
-            if (!File.Exists(UserSettingsPath))
-                throw new FileNotFoundException("user_settings.json не найден");
-            return JObject.Parse(File.ReadAllText(UserSettingsPath));
-        }
-
-        private void SaveUserSettings(JObject json)
-        {
-            Directory.CreateDirectory(AppDataDir);
-            File.WriteAllText(UserSettingsPath, json.ToString());
+            if (!File.Exists(UserSettingsPath)) return new JObject();
+            try { return JObject.Parse(File.ReadAllText(UserSettingsPath)); }
+            catch { return new JObject(); }
         }
 
         private string GetProjectRoot()
         {
-            var json = LoadUserSettings();
+            var json = LoadUserSettingsLegacy();
             return json["paths"]?["project_root"]?.ToString() ?? "";
-        }
-
-        private string GetArtsRoot()
-        {
-            var json = LoadUserSettings();
-            return json["paths"]?["arts_root"]?.ToString() ?? "";
         }
 
         private string GetPythonExe()
         {
             return @"C:\Users\Георгий\AppData\Local\Programs\Python\Python313\python.exe";
-        }
-
-        private string GetJsonDbPath(string key)
-        {
-            var json = LoadUserSettings();
-            var relPath = json["db"]?[key]?.ToString() ?? "";
-            return Path.Combine(GetProjectRoot(), relPath);
         }
 
         // ════════════════════════════════════════
@@ -196,21 +344,38 @@ namespace MAGIAdmin
         //  SETTINGS DIALOGS
         // ════════════════════════════════════════
 
+        /// <summary>
+        /// Проверяет, что канал выбран. Если нет — показывает предупреждение.
+        /// </summary>
+        private bool RequireChannelSelected()
+        {
+            if (!string.IsNullOrEmpty(_selectedChannelId))
+                return true;
+
+            MessageBox.Show(
+                "Сначала выберите канал в верхней панели.\nВсе настройки привязаны к конкретному каналу.",
+                "Канал не выбран", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+
         private void ParserSettings_Click(object sender, RoutedEventArgs e)
         {
-            var win = new ParserSettingsWindow(GetProjectRoot()) { Owner = this };
+            if (!RequireChannelSelected()) return;
+            var win = new ParserSettingsWindow(_selectedChannelId, _selectedChannelArtsRoot) { Owner = this };
             win.ShowDialog();
         }
 
         private void TaggerSettings_Click(object sender, RoutedEventArgs e)
         {
-            var win = new TaggerSettingsWindow(UserSettingsPath) { Owner = this };
+            if (!RequireChannelSelected()) return;
+            var win = new TaggerSettingsWindow(_selectedChannelId) { Owner = this };
             win.ShowDialog();
         }
 
         private void AutopostSettings_Click(object sender, RoutedEventArgs e)
         {
-            var win = new AutopostSettingsWindow(UserSettingsPath) { Owner = this };
+            if (!RequireChannelSelected()) return;
+            var win = new AutopostSettingsWindow(_selectedChannelId, _api) { Owner = this };
             win.ShowDialog();
         }
 
@@ -233,8 +398,16 @@ namespace MAGIAdmin
 
         private async void ParserStart_Click(object sender, RoutedEventArgs e)
         {
+            if (!_parserRunning && !RequireChannelSelected()) return;
+
             if (_parserRunning)
             {
+                // Остановка через Gateway или Process.Kill
+                if (_gatewayConnected)
+                {
+                    AddLog("Parser", "INFO", "Остановка Parser через Gateway...");
+                    await _api.StopServiceAsync("parser");
+                }
                 StopProcess(ref _parserProcess, "Parser");
                 _parserRunning = false;
                 SetServiceStatus("Parser", false);
@@ -253,22 +426,42 @@ namespace MAGIAdmin
             _parserRunning = true;
             SetServiceStatus("Parser", true);
 
-            // Pinterest первый (если оба выбраны)
+            // Пробуем через Gateway API
+            if (_gatewayConnected)
+            {
+                try
+                {
+                    var sources = new List<string>();
+                    if (runPinterest) sources.Add("pinterest");
+                    if (runPixiv) sources.Add("pixiv");
+
+                    AddLog("Parser", "INFO", $"Запуск Parser через Gateway ({string.Join(", ", sources)}) для канала {_selectedChannelId}...");
+                    var result = await _api.RunServiceAsync("parser", new { sources = sources, channelId = _selectedChannelId });
+                    var msg = result?["message"]?.ToString() ?? result?["data"]?["message"]?.ToString() ?? "OK";
+                    AddLog("Parser", "INFO", $"Ответ Gateway: {msg}");
+                    _parserRunning = false;
+                    SetServiceStatus("Parser", false);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Parser", "WARN", "Gateway ошибка, переход к локальному запуску: " + ex.Message);
+                }
+            }
+
+            // Fallback: локальный запуск через Process.Start()
             if (runPinterest)
             {
                 var pinterestScript = Path.Combine(GetProjectRoot(), "Parser", "PinterestParser.py");
-                AddLog("Parser", "INFO", "Pinterest parser started...");
+                AddLog("Parser", "INFO", "Pinterest parser started (local)...");
                 _parserProcess = await RunPythonAsync(pinterestScript, "Parser");
-
-                // Проверка — если пользователь остановил процесс
                 if (!_parserRunning) return;
             }
 
-            // Pixiv вторым
             if (runPixiv)
             {
                 var pixivScript = Path.Combine(GetProjectRoot(), "Parser", "PixivParser.py");
-                AddLog("Parser", "INFO", "Pixiv parser started...");
+                AddLog("Parser", "INFO", "Pixiv parser started (local)...");
                 _parserProcess = await RunPythonAsync(pixivScript, "Parser");
             }
 
@@ -278,18 +471,46 @@ namespace MAGIAdmin
 
         private async void TaggerStart_Click(object sender, RoutedEventArgs e)
         {
+            if (!_taggerRunning && !RequireChannelSelected()) return;
+
             if (_taggerRunning)
             {
+                if (_gatewayConnected)
+                {
+                    AddLog("Tagger", "INFO", "Остановка Tagger через Gateway...");
+                    await _api.StopServiceAsync("tagger");
+                }
                 StopProcess(ref _taggerProcess, "Tagger");
                 _taggerRunning = false;
                 SetServiceStatus("Tagger", false);
                 return;
             }
 
-            var script = Path.Combine(GetProjectRoot(), "FilenameTagger", "FilenameTagger.py");
             _taggerRunning = true;
             SetServiceStatus("Tagger", true);
-            AddLog("Tagger", "INFO", "FilenameTagger started...");
+
+            // Пробуем через Gateway API
+            if (_gatewayConnected)
+            {
+                try
+                {
+                    AddLog("Tagger", "INFO", $"Запуск Tagger через Gateway для канала {_selectedChannelId}...");
+                    var result = await _api.RunServiceAsync("tagger", new { channelId = _selectedChannelId });
+                    var msg = result?["message"]?.ToString() ?? result?["data"]?["message"]?.ToString() ?? "OK";
+                    AddLog("Tagger", "INFO", $"Ответ Gateway: {msg}");
+                    _taggerRunning = false;
+                    SetServiceStatus("Tagger", false);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Tagger", "WARN", "Gateway ошибка, переход к локальному запуску: " + ex.Message);
+                }
+            }
+
+            // Fallback: локальный запуск
+            var script = Path.Combine(GetProjectRoot(), "FilenameTagger", "FilenameTagger.py");
+            AddLog("Tagger", "INFO", "FilenameTagger started (local)...");
             _taggerProcess = await RunPythonAsync(script, "Tagger");
             _taggerRunning = false;
             SetServiceStatus("Tagger", false);
@@ -297,18 +518,46 @@ namespace MAGIAdmin
 
         private async void AutopostStart_Click(object sender, RoutedEventArgs e)
         {
+            if (!_autopostRunning && !RequireChannelSelected()) return;
+
             if (_autopostRunning)
             {
+                if (_gatewayConnected)
+                {
+                    AddLog("Poster", "INFO", "Остановка Publisher через Gateway...");
+                    await _api.StopServiceAsync("publisher");
+                }
                 StopProcess(ref _autopostProcess, "Poster");
                 _autopostRunning = false;
                 SetServiceStatus("Autopost", false);
                 return;
             }
 
-            var script = Path.Combine(GetProjectRoot(), "Auto-post", "Auto-post.py");
             _autopostRunning = true;
             SetServiceStatus("Autopost", true);
-            AddLog("Poster", "INFO", "Auto-post started...");
+
+            // Пробуем через Gateway API
+            if (_gatewayConnected)
+            {
+                try
+                {
+                    AddLog("Poster", "INFO", $"Запуск Publisher через Gateway для канала {_selectedChannelId}...");
+                    var result = await _api.RunServiceAsync("publisher", new { channelId = _selectedChannelId });
+                    var msg = result?["message"]?.ToString() ?? result?["data"]?["message"]?.ToString() ?? "OK";
+                    AddLog("Poster", "INFO", $"Ответ Gateway: {msg}");
+                    _autopostRunning = false;
+                    SetServiceStatus("Autopost", false);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Poster", "WARN", "Gateway ошибка, переход к локальному запуску: " + ex.Message);
+                }
+            }
+
+            // Fallback: локальный запуск
+            var script = Path.Combine(GetProjectRoot(), "Auto-post", "Auto-post.py");
+            AddLog("Poster", "INFO", "Auto-post started (local)...");
             _autopostProcess = await RunPythonAsync(script, "Poster");
             _autopostRunning = false;
             SetServiceStatus("Autopost", false);
@@ -482,38 +731,31 @@ namespace MAGIAdmin
         private void BrowseArtsPath_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            var current = GetArtsRoot();
+            var current = _selectedChannelArtsRoot ?? "";
             if (!string.IsNullOrEmpty(current) && Directory.Exists(current))
                 dialog.SelectedPath = current;
 
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                try
-                {
-                    var json = LoadUserSettings();
-                    if (json["paths"] == null)
-                        json["paths"] = new JObject();
-                    json["paths"]["arts_root"] = dialog.SelectedPath;
-                    SaveUserSettings(json);
-                    TbArtsPath.Text = dialog.SelectedPath;
-                    LoadArtsGallery();
-                    AddLog("Admin", "INFO", "Arts path changed: " + dialog.SelectedPath);
-                }
-                catch (Exception ex)
-                {
-                    AddLog("Admin", "ERROR", "Error setting arts path: " + ex.Message);
-                }
+                // Путь к артам привязан к каналу — обновляем через Gateway
+                _selectedChannelArtsRoot = dialog.SelectedPath;
+                TbArtsPath.Text = dialog.SelectedPath;
+                LoadArtsGallery();
+                AddLog("Admin", "INFO", "Arts path changed: " + dialog.SelectedPath);
+                // Примечание: для сохранения пути в БД обновите ArtsRootPath канала через «Каналы»
             }
         }
 
-        private void LoadArtsGallery()
+        private async void LoadArtsGallery()
         {
             try
             {
                 _allImages.Clear();
                 _filteredImages.Clear();
 
-                var artsRoot = GetArtsRoot();
+                // ArtsRootPath берётся ТОЛЬКО из выбранного канала (Gateway DB)
+                var artsRoot = _selectedChannelArtsRoot ?? "";
+
                 if (string.IsNullOrEmpty(artsRoot) || !Directory.Exists(artsRoot))
                 {
                     AddLog("Admin", "WARN", "Arts root directory not found: " + artsRoot);
@@ -522,29 +764,41 @@ namespace MAGIAdmin
 
                 TbArtsPath.Text = artsRoot;
 
-                // Load images.json for metadata
-                var imagesJsonPath = GetJsonDbPath("images_json");
-                JObject imagesDb = new JObject();
-                if (File.Exists(imagesJsonPath))
+                // Загрузка метаданных из Gateway API (если доступен)
+                var dbLookup = new Dictionary<string, JObject>();
+                if (_gatewayConnected)
                 {
-                    var content = File.ReadAllText(imagesJsonPath);
-                    if (!string.IsNullOrWhiteSpace(content) && content.Trim() != "{}")
-                        imagesDb = JObject.Parse(content);
+                    try
+                    {
+                        var dbImages = await _api.GetImagesAsync(channelId: _selectedChannelId);
+                        foreach (var img in dbImages)
+                        {
+                            var fn = img["fileName"]?.ToString();
+                            if (fn != null) dbLookup[fn] = img;
+                        }
+                        AddLog("Admin", "INFO", $"Gallery metadata loaded from Gateway ({dbImages.Count} records)");
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog("Admin", "WARN", "Gateway images error, fallback to JSON: " + ex.Message);
+                    }
                 }
 
-                // Load posted_images.json for publish status
-                var postedJsonPath = GetJsonDbPath("posted_images_json");
-                JObject postedDb = new JObject();
-                if (File.Exists(postedJsonPath))
-                {
-                    var content = File.ReadAllText(postedJsonPath);
-                    if (!string.IsNullOrWhiteSpace(content) && content.Trim() != "{}")
-                        postedDb = JObject.Parse(content);
-                }
-
+                // Загрузка posted images из Gateway для определения статуса
                 var postedSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var prop in postedDb.Properties())
-                    postedSet.Add(prop.Name);
+                if (_gatewayConnected)
+                {
+                    try
+                    {
+                        var postedImages = await _api.GetPostedImagesAsync();
+                        foreach (var pi in postedImages)
+                        {
+                            var fn = pi["fileName"]?.ToString();
+                            if (fn != null) postedSet.Add(Path.GetFileNameWithoutExtension(fn));
+                        }
+                    }
+                    catch { }
+                }
 
                 // Scan image files — deduplicate by using real directory paths
                 var extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -602,18 +856,19 @@ namespace MAGIAdmin
                         var tags = "";
                         var type = "";
                         var caption = "";
+                        var published = false;
 
-                        if (imagesDb[fi.Name] != null)
+                        // Метаданные из Gateway DB
+                        if (dbLookup.TryGetValue(fi.Name, out var dbImg))
                         {
-                            tags = imagesDb[fi.Name]?["person"]?.ToString() ?? "";
-                            caption = imagesDb[fi.Name]?["caption"]?.ToString() ?? "";
-                            type = imagesDb[fi.Name]?["type"]?.ToString() ?? "";
+                            tags = dbImg["person"]?.ToString() ?? "";
+                            caption = dbImg["caption"]?.ToString() ?? "";
+                            type = dbImg["type"]?.ToString() ?? "";
+                            published = dbImg["posted"]?.Value<int>() == 1;
                         }
-                        else if (imagesDb[nameNoExt] != null)
+                        else
                         {
-                            tags = imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
-                            caption = imagesDb[nameNoExt]?["caption"]?.ToString() ?? "";
-                            type = imagesDb[nameNoExt]?["type"]?.ToString() ?? "";
+                            published = postedSet.Contains(nameNoExt);
                         }
 
                         _allImages.Add(new ImageItem
@@ -623,7 +878,7 @@ namespace MAGIAdmin
                             Tags = tags,
                             Caption = caption,
                             Type = type,
-                            IsPublished = postedSet.Contains(nameNoExt),
+                            IsPublished = published,
                             DateAdded = fi.CreationTime,
                             FileSize = fi.Length,
                             FolderSubDir = subDirName
@@ -644,18 +899,20 @@ namespace MAGIAdmin
                     var tags = "";
                     var type = "";
                     var caption = "";
+                    var published = false;
 
-                    if (imagesDb[fi.Name] != null)
+                    // Gateway data takes priority
+                    // Метаданные из Gateway DB
+                    if (dbLookup.TryGetValue(fi.Name, out var dbImg))
                     {
-                        tags = imagesDb[fi.Name]?["person"]?.ToString() ?? "";
-                        caption = imagesDb[fi.Name]?["caption"]?.ToString() ?? "";
-                        type = imagesDb[fi.Name]?["type"]?.ToString() ?? "";
+                        tags = dbImg["person"]?.ToString() ?? "";
+                        caption = dbImg["caption"]?.ToString() ?? "";
+                        type = dbImg["type"]?.ToString() ?? "";
+                        published = dbImg["posted"]?.Value<int>() == 1;
                     }
-                    else if (imagesDb[nameNoExt] != null)
+                    else
                     {
-                        tags = imagesDb[nameNoExt]?["person"]?.ToString() ?? "";
-                        caption = imagesDb[nameNoExt]?["caption"]?.ToString() ?? "";
-                        type = imagesDb[nameNoExt]?["type"]?.ToString() ?? "";
+                        published = postedSet.Contains(nameNoExt);
                     }
 
                     _allImages.Add(new ImageItem
@@ -665,7 +922,7 @@ namespace MAGIAdmin
                         Tags = tags,
                         Caption = caption,
                         Type = type,
-                        IsPublished = postedSet.Contains(nameNoExt),
+                        IsPublished = published,
                         DateAdded = fi.CreationTime,
                         FileSize = fi.Length,
                         FolderSubDir = "" // root folder
@@ -871,7 +1128,7 @@ namespace MAGIAdmin
 
         private void OpenArtsFolder_Click(object sender, RoutedEventArgs e)
         {
-            var artsRoot = GetArtsRoot();
+            var artsRoot = _selectedChannelArtsRoot ?? "";
             var targetDir = artsRoot;
 
             // If a specific folder tab is active, open that subfolder
@@ -1005,16 +1262,8 @@ namespace MAGIAdmin
 
         private void ClearJsonDb(string key)
         {
-            try
-            {
-                var path = GetJsonDbPath(key);
-                File.WriteAllText(path, "{}");
-                AddLog("Admin", "INFO", key + " cleared");
-            }
-            catch (Exception ex)
-            {
-                AddLog("Admin", "ERROR", "Error clearing " + key + ": " + ex.Message);
-            }
+            // Legacy: JSON DB clearing is no longer needed — data is in SQLite via Gateway.
+            AddLog("Admin", "INFO", key + " — данные хранятся в Gateway DB, очистка JSON не требуется");
         }
 
         // Context menu for images
@@ -1080,27 +1329,27 @@ namespace MAGIAdmin
             }
         }
 
-        private void CtxMarkPublished_Click(object sender, RoutedEventArgs e)
+        private async void CtxMarkPublished_Click(object sender, RoutedEventArgs e)
         {
             if (_contextImage == null) return;
             try
             {
-                var postedJsonPath = GetJsonDbPath("posted_images_json");
-                JObject postedDb = new JObject();
-                if (File.Exists(postedJsonPath))
+                // Отмечаем через Gateway API
+                if (_gatewayConnected)
                 {
-                    var content = File.ReadAllText(postedJsonPath);
-                    if (!string.IsNullOrWhiteSpace(content) && content.Trim() != "{}")
-                        postedDb = JObject.Parse(content);
-                }
+                    var success = await _api.MarkImagePostedAsync(
+                        _contextImage.FileName,
+                        _contextImage.Tags,
+                        _contextImage.Caption,
+                        _selectedChannelId);
 
-                var nameNoExt = Path.GetFileNameWithoutExtension(_contextImage.FileName);
-                postedDb[nameNoExt] = new JObject
+                    if (!success)
+                        AddLog("Admin", "WARN", "Gateway MarkPosted returned false for: " + _contextImage.FileName);
+                }
+                else
                 {
-                    ["posted_at"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                    ["manual"] = true
-                };
-                File.WriteAllText(postedJsonPath, postedDb.ToString());
+                    AddLog("Admin", "WARN", "Gateway недоступен — невозможно отметить опубликованным");
+                }
 
                 _contextImage.IsPublished = true;
                 _contextImage.RaisePropertyChanged("StatusText");
@@ -1138,59 +1387,53 @@ namespace MAGIAdmin
             return date + "T" + time + ":00";
         }
 
-        private void LoadSchedule()
+        private async void LoadSchedule()
         {
             try
             {
                 _allSlots.Clear();
                 _filteredSlots.Clear();
 
-                var schedulePath = GetJsonDbPath("schedule_json");
-                if (!File.Exists(schedulePath)) return;
-
-                var content = File.ReadAllText(schedulePath);
-                if (string.IsNullOrWhiteSpace(content) || content.Trim() == "{}") return;
-
-                var json = JObject.Parse(content);
-
-                foreach (var prop in json.Properties())
+                // Пробуем загрузить через Gateway API
+                if (_gatewayConnected)
                 {
-                    var entry = prop.Value as JObject;
-                    if (entry == null) continue;
-
-                    // Новый формат v2: ключ = ISO timestamp
-                    // Старый формат v1: ключ = "slot_N"
-                    var dateStr = entry["date"]?.ToString() ?? "";
-                    var timeStr = entry["time"]?.ToString() ?? "";
-
-                    // v2 поля
-                    var fileVal   = entry["file"]?.ToString() ?? "";
-                    var personVal = entry["person"]?.ToString() ?? "";
-                    var statusVal = entry["status"]?.ToString() ?? "pending";
-
-                    // v1 поля (обратная совместимость)
-                    if (string.IsNullOrEmpty(fileVal))
-                        fileVal = entry["image"]?.ToString() ?? entry["image_name"]?.ToString() ?? "";
-                    var imagePathVal = entry["image_path"]?.ToString() ?? "";
-
-                    // Нормализуем статус: v1 использовал "empty", v2 — "pending"
-                    if (statusVal == "empty") statusVal = "pending";
-
-                    _allSlots.Add(new ScheduleSlot
+                    try
                     {
-                        IsoKey    = prop.Name,
-                        Date      = dateStr,
-                        Time      = timeStr,
-                        ImageName = string.IsNullOrEmpty(fileVal) ? "— не назначено —" : fileVal,
-                        ImagePath = imagePathVal,
-                        Status    = statusVal,
-                        Caption   = entry["caption"]?.ToString() ?? "",
-                        Tags      = entry["tags"]?.ToString() ?? personVal,
-                        Repeat    = entry["repeat"]?.ToString() ?? "нет",
-                    });
+                        var slots = await _api.GetScheduleAsync(_selectedChannelId);
+                        foreach (var s in slots)
+                        {
+                            var fileVal = s["file"]?.ToString() ?? "";
+                            var statusVal = s["status"]?.ToString() ?? "pending";
+                            if (statusVal == "empty") statusVal = "pending";
+
+                            _allSlots.Add(new ScheduleSlot
+                            {
+                                IsoKey    = s["isoKey"]?.ToString() ?? s["id"]?.ToString() ?? "",
+                                Date      = s["date"]?.ToString() ?? "",
+                                Time      = s["time"]?.ToString() ?? "",
+                                ImageName = string.IsNullOrEmpty(fileVal) ? "— не назначено —" : fileVal,
+                                ImagePath = "",
+                                Status    = statusVal,
+                                Caption   = s["caption"]?.ToString() ?? "",
+                                Tags      = s["person"]?.ToString() ?? s["tags"]?.ToString() ?? "",
+                                Repeat    = s["repeat"]?.ToString() ?? "нет",
+                            });
+                        }
+                        AddLog("Admin", "INFO", $"Расписание загружено из Gateway ({slots.Count} слотов)");
+                        ApplyScheduleFilter();
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog("Admin", "WARN", "Gateway schedule load error, fallback to JSON: " + ex.Message);
+                    }
                 }
 
-                ApplyScheduleFilter();
+                // Если Gateway недоступен — нечего загружать
+                if (!_gatewayConnected)
+                {
+                    AddLog("Admin", "WARN", "Gateway недоступен — расписание не загружено");
+                }
             }
             catch (Exception ex)
             {
@@ -1223,35 +1466,46 @@ namespace MAGIAdmin
             OpenEditPanel(newSlot);
         }
 
-        private void SaveSchedule_Click(object sender, RoutedEventArgs e)
+        private async void SaveSchedule_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var schedulePath = GetJsonDbPath("schedule_json");
-                var json = new JObject();
-
-                foreach (var slot in _allSlots)
+                // Сохраняем через Gateway API если доступен
+                if (_gatewayConnected)
                 {
-                    // Используем IsoKey если он уже задан, иначе генерируем
-                    var key = !string.IsNullOrEmpty(slot.IsoKey)
-                        ? slot.IsoKey
-                        : MakeIsoKey(slot.Date, slot.Time);
-
-                    var imageFile = (slot.ImageName == "— не назначено —") ? null : slot.ImageName;
-
-                    json[key] = new JObject
+                    try
                     {
-                        ["date"]    = slot.Date,
-                        ["time"]    = slot.Time,
-                        ["status"]  = slot.Status == "empty" ? "pending" : slot.Status,
-                        ["file"]    = imageFile,
-                        ["person"]  = string.IsNullOrEmpty(slot.Tags) ? null : (JToken)slot.Tags,
-                        ["caption"] = slot.Caption ?? "",
-                    };
+                        int saved = 0;
+                        foreach (var slot in _allSlots)
+                        {
+                            var imageFile = (slot.ImageName == "— не назначено —") ? "" : slot.ImageName;
+                            if (slot.Status == "empty") slot.Status = "pending";
+
+                            if (string.IsNullOrEmpty(slot.IsoKey))
+                            {
+                                // Новый слот — создаём через Gateway
+                                var isoKey = await _api.CreateSlotAsync(slot.Date, slot.Time, slot.Caption ?? "", _selectedChannelId);
+                                if (!string.IsNullOrEmpty(isoKey))
+                                    slot.IsoKey = isoKey;
+                            }
+                            else
+                            {
+                                // Существующий слот — обновляем через Gateway
+                                await _api.UpdateSlotAsync(slot.IsoKey, slot.Date, slot.Time, slot.Caption ?? "");
+                            }
+                            saved++;
+                        }
+                        AddLog("Admin", "INFO", $"Расписание сохранено через Gateway ({saved} слотов)");
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog("Admin", "WARN", "Gateway save error, fallback to JSON: " + ex.Message);
+                    }
                 }
 
-                File.WriteAllText(schedulePath, json.ToString());
-                AddLog("Admin", "INFO", "Schedule saved (" + _allSlots.Count + " slots)");
+                // Gateway недоступен — невозможно сохранить
+                AddLog("Admin", "ERROR", "Gateway недоступен — расписание не сохранено. Запустите Gateway.");
             }
             catch (Exception ex)
             {
@@ -1265,7 +1519,7 @@ namespace MAGIAdmin
             AddLog("Admin", "INFO", "Schedule reset to saved state");
         }
 
-        private void ImportScheduleJson_Click(object sender, RoutedEventArgs e)
+        private async void ImportScheduleJson_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
             {
@@ -1276,10 +1530,34 @@ namespace MAGIAdmin
             {
                 try
                 {
-                    var schedulePath = GetJsonDbPath("schedule_json");
-                    File.Copy(dlg.FileName, schedulePath, true);
+                    if (!_gatewayConnected)
+                    {
+                        MessageBox.Show("Gateway недоступен.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    var content = File.ReadAllText(dlg.FileName);
+                    var json = JObject.Parse(content);
+                    int imported = 0;
+
+                    foreach (var prop in json.Properties())
+                    {
+                        var entry = prop.Value as JObject;
+                        if (entry == null) continue;
+
+                        var date = entry["date"]?.ToString() ?? "";
+                        var time = entry["time"]?.ToString() ?? "";
+                        var caption = entry["caption"]?.ToString() ?? "";
+
+                        if (!string.IsNullOrEmpty(date) && !string.IsNullOrEmpty(time))
+                        {
+                            await _api.CreateSlotAsync(date, time, caption, _selectedChannelId);
+                            imported++;
+                        }
+                    }
+
                     LoadSchedule();
-                    AddLog("Admin", "INFO", "Schedule imported from: " + dlg.FileName);
+                    AddLog("Admin", "INFO", $"Импортировано {imported} слотов из: " + dlg.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -1300,8 +1578,21 @@ namespace MAGIAdmin
             {
                 try
                 {
-                    var schedulePath = GetJsonDbPath("schedule_json");
-                    File.Copy(schedulePath, dlg.FileName, true);
+                    // Экспортируем текущие слоты из UI в JSON
+                    var json = new JObject();
+                    foreach (var slot in _allSlots.OrderBy(s => s.IsoKey))
+                    {
+                        var key = !string.IsNullOrEmpty(slot.IsoKey) ? slot.IsoKey : MakeIsoKey(slot.Date, slot.Time);
+                        json[key] = new JObject
+                        {
+                            ["date"]    = slot.Date,
+                            ["time"]    = slot.Time,
+                            ["status"]  = slot.Status,
+                            ["file"]    = (slot.ImageName == "— не назначено —") ? null : slot.ImageName,
+                            ["caption"] = slot.Caption ?? "",
+                        };
+                    }
+                    File.WriteAllText(dlg.FileName, json.ToString());
                     AddLog("Admin", "INFO", "Schedule exported to: " + dlg.FileName);
                 }
                 catch (Exception ex)
@@ -1323,15 +1614,34 @@ namespace MAGIAdmin
             if (slot != null) OpenEditPanel(slot);
         }
 
-        private void DeleteSlot_Click(object sender, RoutedEventArgs e)
+        private async void DeleteSlot_Click(object sender, RoutedEventArgs e)
         {
             var btn = sender as Button;
             var slot = btn?.Tag as ScheduleSlot;
-            if (slot != null)
+            if (slot == null) return;
+
+            // Удаляем из Gateway если слот сохранён (есть IsoKey)
+            if (_gatewayConnected && !string.IsNullOrEmpty(slot.IsoKey))
             {
-                _allSlots.Remove(slot);
-                ApplyScheduleFilter();
+                try
+                {
+                    var ok = await _api.DeleteSlotAsync(slot.IsoKey);
+                    if (!ok)
+                    {
+                        AddLog("Admin", "ERROR", $"Не удалось удалить слот {slot.IsoKey} из Gateway");
+                        return;
+                    }
+                    AddLog("Admin", "INFO", $"Слот удалён: {slot.Date} {slot.Time}");
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Admin", "ERROR", $"Ошибка удаления слота: {ex.Message}");
+                    return;
+                }
             }
+
+            _allSlots.Remove(slot);
+            ApplyScheduleFilter();
         }
 
         private void OpenEditPanel(ScheduleSlot slot)
@@ -1359,7 +1669,7 @@ namespace MAGIAdmin
             }
         }
 
-        private void SaveSlot_Click(object sender, RoutedEventArgs e)
+        private async void SaveSlot_Click(object sender, RoutedEventArgs e)
         {
             if (_editingSlot == null) return;
 
@@ -1370,8 +1680,50 @@ namespace MAGIAdmin
             _editingSlot.Tags = TbSlotTags.Text.Trim();
             _editingSlot.Repeat = (CbSlotRepeat.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "нет";
 
-            if (!string.IsNullOrEmpty(_editingSlot.ImageName) && _editingSlot.ImageName != "— не назначено —")
+            if (_editingSlot.Status == "empty")
                 _editingSlot.Status = "pending";
+
+            // ─── Сохраняем слот в Gateway сразу ───
+            if (_gatewayConnected)
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(_editingSlot.IsoKey))
+                    {
+                        // Новый слот → создаём
+                        var isoKey = await _api.CreateSlotAsync(
+                            _editingSlot.Date, _editingSlot.Time,
+                            _editingSlot.Caption ?? "", _selectedChannelId);
+
+                        if (!string.IsNullOrEmpty(isoKey))
+                        {
+                            // Присваиваем IsoKey из ответа Gateway
+                            _editingSlot.IsoKey = isoKey;
+                            AddLog("Admin", "INFO", $"Слот создан: {_editingSlot.Date} {_editingSlot.Time} → {isoKey}");
+                        }
+                        else
+                        {
+                            AddLog("Admin", "ERROR", "Ошибка создания слота в Gateway");
+                        }
+                    }
+                    else
+                    {
+                        // Существующий слот → обновляем
+                        var ok = await _api.UpdateSlotAsync(
+                            _editingSlot.IsoKey, _editingSlot.Date,
+                            _editingSlot.Time, _editingSlot.Caption ?? "");
+
+                        if (ok)
+                            AddLog("Admin", "INFO", $"Слот обновлён: {_editingSlot.Date} {_editingSlot.Time}");
+                        else
+                            AddLog("Admin", "ERROR", "Ошибка обновления слота в Gateway");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddLog("Admin", "ERROR", $"Ошибка сохранения слота: {ex.Message}");
+                }
+            }
 
             _editingSlot.RaisePropertyChanged("Date");
             _editingSlot.RaisePropertyChanged("Time");
@@ -1402,7 +1754,7 @@ namespace MAGIAdmin
             {
                 Filter = "Image files|*.jpg;*.jpeg;*.png;*.webp;*.gif;*.bmp",
                 Title = "Выбрать изображение",
-                InitialDirectory = GetArtsRoot()
+                InitialDirectory = _selectedChannelArtsRoot ?? ""
             };
             if (dlg.ShowDialog() == true)
             {
@@ -1416,86 +1768,40 @@ namespace MAGIAdmin
 
         private int _nextRuleId = 1;
 
-        private void LoadPostingRules()
+        private async void LoadPostingRules()
         {
             try
             {
                 _postTimes.Clear();
                 _nextRuleId = 1;
 
-                if (!File.Exists(PostingRulesPath)) return;
-                var json = JObject.Parse(File.ReadAllText(PostingRulesPath));
+                if (!_gatewayConnected || string.IsNullOrEmpty(_selectedChannelId))
+                    return;
 
-                // ── New format: "rules" array ──
-                var rulesArr = json["rules"] as JArray;
-                if (rulesArr != null)
+                var rules = await _api.GetPostingRulesAsync(_selectedChannelId);
+                foreach (var rule in rules)
                 {
-                    foreach (var item in rulesArr)
-                    {
-                        var rule = item as JObject;
-                        if (rule == null) continue;
+                    var days = new List<string>();
+                    var daysArr = rule["days"] as JArray;
+                    if (daysArr != null)
+                        foreach (var d in daysArr)
+                            days.Add(d.ToString());
 
-                        var days = new List<string>();
-                        var daysArr = rule["days"] as JArray;
-                        if (daysArr != null)
-                            foreach (var d in daysArr)
-                                days.Add(d.ToString());
-
-                        var entry = new PostTimeEntry
-                        {
-                            Id      = _nextRuleId++,
-                            Time    = rule["time"]?.ToString() ?? "",
-                            Caption = rule["caption"]?.ToString() ?? "",
-                            Days    = days,
-                        };
-                        _postTimes.Add(entry);
-                    }
-                    return; // loaded from new format — done
-                }
-
-                // ── Legacy format: "week_template" + "captions_by_time" → migrate on the fly ──
-                var captionsObj = json["captions_by_time"] as JObject;
-                var captionsMap = new Dictionary<string, string>();
-                if (captionsObj != null)
-                    foreach (var prop in captionsObj.Properties())
-                        captionsMap[prop.Name] = prop.Value.ToString();
-
-                var timeDays = new Dictionary<string, HashSet<string>>();
-                var weekTemplate = json["week_template"] as JObject;
-                if (weekTemplate != null)
-                {
-                    foreach (var dayProp in weekTemplate.Properties())
-                    {
-                        var times = dayProp.Value as JArray;
-                        if (times == null) continue;
-                        foreach (var t in times)
-                        {
-                            var ts = t.ToString();
-                            if (!timeDays.ContainsKey(ts))
-                                timeDays[ts] = new HashSet<string>();
-                            timeDays[ts].Add(dayProp.Name);
-                        }
-                    }
-                }
-                foreach (var kv in captionsMap)
-                    if (!timeDays.ContainsKey(kv.Key))
-                        timeDays[kv.Key] = new HashSet<string>();
-
-                foreach (var t in timeDays.Keys.OrderBy(x => x))
-                {
-                    captionsMap.TryGetValue(t, out var cap);
                     _postTimes.Add(new PostTimeEntry
                     {
                         Id      = _nextRuleId++,
-                        Time    = t,
-                        Caption = cap ?? "",
-                        Days    = timeDays[t].ToList(),
+                        Time    = rule["time"]?.ToString() ?? "",
+                        Caption = rule["caption"]?.ToString() ?? "",
+                        Days    = days,
                     });
                 }
-                // Auto-save in new format so the file is migrated
-                SavePostingRulesInternal();
+
+                AddLog("Admin", "INFO", $"Правила постинга загружены из Gateway ({rules.Count})");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AddLog("Admin", "WARN", "Ошибка загрузки правил постинга: " + ex.Message);
+            }
         }
 
         private void AddPostTime_Click(object sender, RoutedEventArgs e)
@@ -1539,49 +1845,60 @@ namespace MAGIAdmin
                 _postTimes.Remove(entry);
         }
 
-        private void ApplyRulesToSchedule_Click(object sender, RoutedEventArgs e)
+        private async void ApplyRulesToSchedule_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var json = LoadUserSettings();
-                int scheduleDays = 7;
-                var schedSection = json["schedule"] as JObject;
-                if (schedSection != null)
-                    int.TryParse(schedSection["schedule_days"]?.ToString() ?? "7", out scheduleDays);
-
-                // Читаем уже существующие слоты чтобы не перезаписывать scheduled/posted
-                var schedulePath = GetJsonDbPath("schedule_json");
-                var existingJson = File.Exists(schedulePath)
-                    ? JObject.Parse(File.ReadAllText(schedulePath))
-                    : new JObject();
-
-                // Набор ключей уже запланированных/отправленных слотов — не трогаем
-                var protectedKeys = new HashSet<string>();
-                foreach (var p in existingJson.Properties())
+                if (!_gatewayConnected)
                 {
-                    var st = (p.Value as JObject)?["status"]?.ToString() ?? "";
+                    MessageBox.Show("Gateway недоступен. Запустите Gateway.", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                int scheduleDays = 7;
+                int.TryParse(TbScheduleDaysRules.Text.Trim(), out scheduleDays);
+                if (scheduleDays <= 0) scheduleDays = 7;
+
+                // Загружаем существующие слоты из Gateway
+                var existingSlots = await _api.GetScheduleAsync(_selectedChannelId);
+
+                // Защищённые слоты (scheduled/posted/missed) — не трогаем
+                var protectedKeys = new HashSet<string>();
+                foreach (var slot in existingSlots)
+                {
+                    var st = slot["status"]?.ToString() ?? "";
                     if (st == "scheduled" || st == "posted" || st == "missed")
-                        protectedKeys.Add(p.Name);
+                        protectedKeys.Add(slot["isoKey"]?.ToString() ?? "");
                 }
 
                 _allSlots.Clear();
 
-                // Сначала восстанавливаем защищённые слоты в UI
-                foreach (var p in existingJson.Properties())
+                // Удаляем старые pending-слоты из Gateway (они будут пересозданы)
+                foreach (var slot in existingSlots)
                 {
-                    if (!protectedKeys.Contains(p.Name)) continue;
-                    var e2 = p.Value as JObject;
-                    if (e2 == null) continue;
-                    var fileVal = e2["file"]?.ToString() ?? "";
+                    var key = slot["isoKey"]?.ToString() ?? "";
+                    if (protectedKeys.Contains(key)) continue;
+                    // Это pending/empty — удаляем из Gateway
+                    if (!string.IsNullOrEmpty(key))
+                        await _api.DeleteSlotAsync(key);
+                }
+
+                // Восстанавливаем защищённые слоты
+                foreach (var slot in existingSlots)
+                {
+                    var key = slot["isoKey"]?.ToString() ?? "";
+                    if (!protectedKeys.Contains(key)) continue;
+                    var fileVal = slot["file"]?.ToString() ?? "";
                     _allSlots.Add(new ScheduleSlot
                     {
-                        IsoKey    = p.Name,
-                        Date      = e2["date"]?.ToString() ?? "",
-                        Time      = e2["time"]?.ToString() ?? "",
+                        IsoKey    = key,
+                        Date      = slot["date"]?.ToString() ?? "",
+                        Time      = slot["time"]?.ToString() ?? "",
                         ImageName = string.IsNullOrEmpty(fileVal) ? "— не назначено —" : fileVal,
-                        Status    = e2["status"]?.ToString() ?? "scheduled",
-                        Caption   = e2["caption"]?.ToString() ?? "",
-                        Tags      = e2["person"]?.ToString() ?? "",
+                        Status    = slot["status"]?.ToString() ?? "scheduled",
+                        Caption   = slot["caption"]?.ToString() ?? "",
+                        Tags      = slot["person"]?.ToString() ?? "",
                         Repeat    = "нет",
                     });
                 }
@@ -1598,11 +1915,15 @@ namespace MAGIAdmin
                         if (!rule.Days.Contains(dayName)) continue;
 
                         var isoKey = MakeIsoKey(date.ToString("yyyy-MM-dd"), rule.Time);
-                        if (protectedKeys.Contains(isoKey)) continue; // уже запланировано
+                        if (protectedKeys.Contains(isoKey)) continue;
+
+                        // Создаём слот в Gateway и получаем реальный IsoKey
+                        var createdKey = await _api.CreateSlotAsync(date.ToString("yyyy-MM-dd"), rule.Time, rule.Caption ?? "", _selectedChannelId);
+                        if (string.IsNullOrEmpty(createdKey)) continue;
 
                         _allSlots.Add(new ScheduleSlot
                         {
-                            IsoKey    = isoKey,
+                            IsoKey    = createdKey,
                             Date      = date.ToString("yyyy-MM-dd"),
                             Time      = rule.Time,
                             ImageName = "— не назначено —",
@@ -1614,24 +1935,6 @@ namespace MAGIAdmin
                         newCount++;
                     }
                 }
-
-                // Сохраняем сразу в schedule.json (единый формат v2)
-                var outJson = new JObject();
-                foreach (var slot in _allSlots.OrderBy(s => s.IsoKey))
-                {
-                    var fileVal = (slot.ImageName == "— не назначено —") ? null : slot.ImageName;
-                    outJson[slot.IsoKey] = new JObject
-                    {
-                        ["date"]    = slot.Date,
-                        ["time"]    = slot.Time,
-                        ["status"]  = slot.Status,
-                        ["file"]    = fileVal,
-                        ["person"]  = string.IsNullOrEmpty(slot.Tags) ? null : (JToken)slot.Tags,
-                        ["caption"] = slot.Caption ?? "",
-                    };
-                }
-                Directory.CreateDirectory(Path.GetDirectoryName(schedulePath));
-                File.WriteAllText(schedulePath, outJson.ToString());
 
                 ApplyScheduleFilter();
                 AddLog("Admin", "INFO",
@@ -1645,18 +1948,11 @@ namespace MAGIAdmin
 
         private void ScheduleDays_TextChanged(object sender, TextChangedEventArgs e)
         {
-            // Save schedule_days to user_settings.json whenever the value changes
+            // Сохраняем schedule_days в Properties.Settings (локальная UI-настройка)
             if (int.TryParse(TbScheduleDaysRules.Text.Trim(), out int days) && days > 0)
             {
-                try
-                {
-                    var json = LoadUserSettings();
-                    if (json["schedule"] == null)
-                        json["schedule"] = new JObject();
-                    json["schedule"]["schedule_days"] = days;
-                    SaveUserSettings(json);
-                }
-                catch { }
+                Properties.Settings.Default.ScheduleDays = days;
+                Properties.Settings.Default.Save();
             }
         }
 
@@ -1666,29 +1962,31 @@ namespace MAGIAdmin
             AddLog("Admin", "INFO", "Posting rules saved");
         }
 
-        private void SavePostingRulesInternal()
+        private async void SavePostingRulesInternal()
         {
             try
             {
-                var rulesArr = new JArray();
-                foreach (var entry in _postTimes)
+                if (!_gatewayConnected || string.IsNullOrEmpty(_selectedChannelId))
                 {
-                    rulesArr.Add(new JObject
-                    {
-                        ["time"]    = entry.Time,
-                        ["days"]    = new JArray(entry.Days.ToArray()),
-                        ["caption"] = entry.Caption ?? "",
-                    });
+                    AddLog("Admin", "ERROR", "Gateway недоступен или канал не выбран — правила не сохранены");
+                    return;
                 }
 
-                var json = new JObject
+                var rules = _postTimes.Select(entry => new
                 {
-                    ["version"] = 2,
-                    ["rules"]   = rulesArr,
-                };
+                    time = entry.Time,
+                    days = entry.Days,
+                    caption = entry.Caption ?? "",
+                    channelId = _selectedChannelId
+                }).ToList();
 
-                Directory.CreateDirectory(AppDataDir);
-                File.WriteAllText(PostingRulesPath, json.ToString());
+                var result = await _api.ReplacePostingRulesAsync(_selectedChannelId, rules);
+                var success = result?["success"]?.Value<bool>() ?? false;
+
+                if (success)
+                    AddLog("Admin", "INFO", $"Правила постинга сохранены в Gateway ({rules.Count})");
+                else
+                    AddLog("Admin", "ERROR", "Ошибка сохранения правил: " + (result?["message"]?.ToString() ?? "unknown"));
             }
             catch (Exception ex)
             {

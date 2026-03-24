@@ -1,40 +1,25 @@
 """
-Pinterest Арт Парсер v3.0 (Python)
+Pinterest Арт Парсер v4.0 (Python)
 Скачивает изображения по хэштегам из Pinterest через Selenium.
+Конфигурация и база скачиваний — через API Gateway (SQLite).
 """
 
-import json
 import os
 import re
 import sys
 import time
 import urllib.parse
-from datetime import datetime
 from pathlib import Path
 
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
 
-
-# ════════════════════════════════════════
-#  Пути
-# ════════════════════════════════════════
-
-def get_project_root() -> Path:
-    """Определяет корень проекта (папка, содержащая Parser/)."""
-    return Path(__file__).resolve().parent.parent
-
-
-def get_config_path() -> Path:
-    return get_project_root() / "data" / "json" / "parser" / "config.json"
-
-
-def get_database_path() -> Path:
-    return get_project_root() / "data" / "json" / "parser" / "Pinterest_downloaded_images.json"
+# Gateway client
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config.gateway_client import GatewayClient
 
 
 # ════════════════════════════════════════
@@ -55,36 +40,46 @@ def log(msg: str, color: str = Colors.WHITE):
     try:
         print(f"{color}{msg}{Colors.RESET}", flush=True)
     except UnicodeEncodeError:
-        # Fallback для Windows CP1251/CP866 консолей
-        safe = msg.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(sys.stdout.encoding or "utf-8", errors="replace")
+        safe = msg.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
+            sys.stdout.encoding or "utf-8", errors="replace"
+        )
         print(f"{color}{safe}{Colors.RESET}", flush=True)
 
 
 # ════════════════════════════════════════
-#  Конфигурация
+#  Конфигурация (из Gateway)
 # ════════════════════════════════════════
 
 class Config:
-    def __init__(self, data: dict):
-        self.hashtags: list[str]   = data.get("hashtags", [])
-        self.images_per_hashtag: int = data.get("imagesPerHashtag", 50)
-        self.download_path: str    = data.get("downloadPath", "")
-        self.scroll_delay_ms: int  = data.get("scrollDelayMs", 2000)
-        self.image_load_delay_ms: int = data.get("imageLoadDelayMs", 1000)
+    def __init__(self, channel_id: str, gw: GatewayClient):
+        self.channel_id = channel_id
+
+        # Получаем данные канала
+        channel = gw.get_channel(channel_id)
+        if not channel:
+            raise ValueError(f"Канал {channel_id} не найден в Gateway")
+
+        # Получаем конфиг парсера
+        parser_cfg = gw.get_parser_config(channel_id)
+        if not parser_cfg:
+            raise ValueError(f"Конфиг парсера для канала {channel_id} не найден")
+
+        self.hashtags: list[str] = parser_cfg.get("hashtags", [])
+        self.images_per_hashtag: int = parser_cfg.get("imagesPerHashtag", 50)
+        self.scroll_delay_ms: int = parser_cfg.get("scrollDelayMs", 2000)
+        self.image_load_delay_ms: int = parser_cfg.get("imageLoadDelayMs", 1000)
+
+        # Путь для скачивания = ArtsRootPath / New-Images
+        arts_root = channel.get("artsRootPath", "")
+        if not arts_root:
+            raise ValueError(f"ArtsRootPath не задан для канала {channel_id}")
+        self.download_path: str = os.path.join(arts_root, "New-Images")
 
 
-def load_config() -> Config:
-    log("Загрузка конфигурации...", Colors.CYAN)
-    path = get_config_path()
-
-    if not path.exists():
-        raise FileNotFoundError(f"Файл конфигурации не найден: {path}")
-
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    cfg = Config(data)
-    log("✓ Конфигурация загружена", Colors.GREEN)
+def load_config(channel_id: str, gw: GatewayClient) -> Config:
+    log("Загрузка конфигурации из Gateway...", Colors.CYAN)
+    cfg = Config(channel_id, gw)
+    log("✓ Конфигурация загружена из Gateway", Colors.GREEN)
     return cfg
 
 
@@ -97,53 +92,45 @@ def validate_config(cfg: Config):
 
 
 # ════════════════════════════════════════
-#  База данных скачанных изображений
+#  База данных скачанных изображений (Gateway API)
 # ════════════════════════════════════════
 
 class DownloadDatabase:
-    def __init__(self, path: Path):
-        self._path = path
-        self._records: list[dict] = []
-        self._downloaded_urls: set[str] = set()
+    """Обёртка над Gateway API для проверки и добавления скачанных записей."""
+
+    def __init__(self, gw: GatewayClient, channel_id: str):
+        self._gw = gw
+        self._channel_id = channel_id
+        self._count = 0
+        # Локальный кэш URL-ов текущей сессии (чтобы не дёргать API на каждый пин)
+        self._session_urls: set[str] = set()
 
     @property
     def count(self) -> int:
-        return len(self._records)
+        return self._count
 
     def load(self):
-        if not self._path.exists():
-            return
-        try:
-            with open(self._path, "r", encoding="utf-8") as f:
-                records = json.load(f)
-            if isinstance(records, list):
-                self._records = records
-                for r in records:
-                    url = r.get("pinUrl", "")
-                    if url:
-                        self._downloaded_urls.add(url)
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    def save(self):
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._path, "w", encoding="utf-8") as f:
-            json.dump(self._records, f, indent=2, ensure_ascii=False)
+        """Загружает счётчик из Gateway."""
+        self._count = self._gw.get_download_count(source="pinterest")
 
     def is_downloaded(self, pin_url: str) -> bool:
-        return pin_url in self._downloaded_urls
+        if pin_url in self._session_urls:
+            return True
+        return self._gw.is_downloaded(pin_url)
 
     def add(self, pin_url: str, image_url: str, file_name: str, hashtag: str):
-        if pin_url in self._downloaded_urls:
+        if pin_url in self._session_urls:
             return
-        self._records.append({
-            "pinUrl": pin_url,
-            "imageUrl": image_url,
-            "fileName": file_name,
-            "hashtag": hashtag,
-            "downloadedAt": datetime.now().isoformat(),
-        })
-        self._downloaded_urls.add(pin_url)
+        self._gw.add_download_record(
+            source="pinterest",
+            source_url=pin_url,
+            image_url=image_url,
+            file_name=file_name,
+            hashtag=hashtag,
+            channel_id=self._channel_id,
+        )
+        self._session_urls.add(pin_url)
+        self._count += 1
 
 
 # ════════════════════════════════════════
@@ -171,14 +158,12 @@ def init_chrome() -> webdriver.Chrome:
     if chrome_bin:
         opts.binary_location = chrome_bin
 
-    # Профиль парсера (чтобы сохранять логин)
     profile_dir = os.path.join(
         os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
         "PinterestParserProfile",
     )
     os.makedirs(profile_dir, exist_ok=True)
 
-    # Удаляем lock-файл если есть
     lock_file = os.path.join(profile_dir, "SingletonLock")
     if os.path.exists(lock_file):
         try:
@@ -215,7 +200,6 @@ def init_chrome() -> webdriver.Chrome:
         driver = webdriver.Chrome(options=simple_opts)
         driver.implicitly_wait(10)
         log("✓ Chrome запущен (без сохранения сессии)", Colors.GREEN)
-        log("  ⚠ Придётся авторизовываться каждый раз", Colors.YELLOW)
         return driver
 
 
@@ -364,7 +348,6 @@ def process_hashtag(
     session_for_tag = 0
 
     while downloaded < cfg.images_per_hashtag and scroll_attempts < 50:
-        # Ищем пины
         pins = driver.find_elements(By.CSS_SELECTOR, "div[data-test-id='pin']")
         if not pins:
             pins = driver.find_elements(By.CSS_SELECTOR, "div[data-test-id='pinWrapper']")
@@ -386,14 +369,13 @@ def process_hashtag(
             if not pin_url:
                 continue
 
-            # Дубликат?
+            # Дубликат? (проверка через Gateway API)
             if db.is_downloaded(pin_url):
                 log(f"  ⤷ Пин {pin_id} уже скачан, пропускаю", Colors.GRAY)
                 continue
 
             file_name = download_pin(driver, pin_url, pin_id, hashtag, cfg)
             if file_name:
-                # Получаем image_url для БД (из последней вкладки уже закрыта, берём из имени)
                 db.add(pin_url, "", file_name, hashtag)
                 downloaded += 1
                 session_for_tag += 1
@@ -419,25 +401,32 @@ def process_hashtag(
 #  Main
 # ════════════════════════════════════════
 
-def main():
+def main(channel_id: str | None = None, gw: GatewayClient | None = None):
     # Принудительно UTF-8 для Windows
     if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     print("═══════════════════════════════════════")
-    print("    Pinterest Арт Парсер v3.0")
+    print("    Pinterest Арт Парсер v4.0")
+    print("    (Gateway API mode)")
     print("═══════════════════════════════════════\n")
 
+    if not channel_id:
+        raise ValueError("channel_id обязателен. Передайте через service.py или аргумент.")
+
+    if gw is None:
+        gw = GatewayClient()
+
     try:
-        cfg = load_config()
+        cfg = load_config(channel_id, gw)
         validate_config(cfg)
 
-        db = DownloadDatabase(get_database_path())
+        db = DownloadDatabase(gw, channel_id)
         db.load()
-        log(f"База данных: {get_database_path()}", Colors.CYAN)
+        log(f"База данных: Gateway API (SQLite)", Colors.CYAN)
         if db.count > 0:
-            log(f"  Уже скачано ранее: {db.count} изображений", Colors.GRAY)
+            log(f"  Уже скачано ранее: {db.count} изображений (pinterest)", Colors.GRAY)
 
         os.makedirs(cfg.download_path, exist_ok=True)
 
@@ -450,15 +439,15 @@ def main():
                 log(f"\n▶ Обработка хэштега: #{hashtag}", Colors.YELLOW)
                 session_total += process_hashtag(driver, hashtag, cfg, db)
 
-            db.save()
             log(f"\n✓ Готово! Скачано в этой сессии: {session_total} | Всего в базе: {db.count}", Colors.GREEN)
         finally:
             driver.quit()
 
     except Exception as exc:
         log(f"\n✗ Ошибка: {exc}", Colors.RED)
-        sys.exit(1)
+        raise
 
 
 if __name__ == "__main__":
-    main()
+    _ch_id = sys.argv[1] if len(sys.argv) > 1 else None
+    main(channel_id=_ch_id)

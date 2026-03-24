@@ -138,7 +138,7 @@ Swagger UI: `http://localhost:5000/swagger`
 - `GET /api/publisher/stats` — статистика (сколько артов, слотов и т.д.)
 
 ### ScheduleController
-- `GET /api/schedule` — все слоты
+- `GET /api/schedule` — все слоты (`?channelId=` — фильтр по каналу)
 - `GET /api/schedule/pending` — только pending-слоты
 - `GET /api/schedule/images` — изображения для публикации
 - `GET /api/schedule/posted` — опубликованные изображения
@@ -150,8 +150,26 @@ Swagger UI: `http://localhost:5000/swagger`
 ### ChannelController
 - `GET /api/channel` — все каналы
 - `GET /api/channel/{id}` — канал по ID
-- `POST /api/channel` — создать канал
-- `DELETE /api/channel/{id}` — удалить канал
+- `POST /api/channel` — создать канал (автосоздание дефолтных конфигов парсера/теггера)
+- `PUT /api/channel/{id}` — обновить канал
+- `DELETE /api/channel/{id}` — удалить канал (каскадное удаление конфигов)
+- `GET /api/channel/{id}/parser-config` — конфиг парсера для канала
+- `PUT /api/channel/{id}/parser-config` — обновить конфиг парсера
+- `GET /api/channel/{id}/tagger-config` — конфиг теггера для канала
+- `PUT /api/channel/{id}/tagger-config` — обновить конфиг теггера
 - `GET /api/channel/networks` — все сети
 - `POST /api/channel/networks` — создать сеть
 - `DELETE /api/channel/networks/{id}` — удалить сеть
+
+### DataController
+- `GET /api/data/images` — изображения (`?channelId=`, `?unpostedOnly=`)
+- `POST /api/data/images` — добавить изображение
+- `POST /api/data/images/{name}/posted` — пометить опубликованным
+- `DELETE /api/data/images/{name}` — удалить
+- `GET /api/data/schedule/pending` — pending-слоты (`?channelId=`)
+- `PATCH /api/data/schedule/{key}/status` — обновить статус
+- `GET /api/data/channels/active` — активные каналы для Publisher
+- `GET /api/data/downloads/check` — проверить URL на дубликат
+- `POST /api/data/downloads` — добавить запись скачивания
+- `GET /api/data/downloads/count` — статистика (`?source=`)
+- `GET /api/data/rules` — правила публикации (`?channelId=`)

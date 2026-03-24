@@ -7,6 +7,7 @@ namespace MAGI.ApiGateway.Controllers;
 /// <summary>
 /// Data API — эндпоинты для Python-микросервисов.
 /// Позволяют сервисам читать/писать данные через HTTP вместо прямого доступа к файлам.
+/// Поддерживает фильтрацию по channelId для мультиканальной работы.
 /// </summary>
 [ApiController]
 [Route("api/data")]
@@ -24,13 +25,15 @@ public class DataController : ControllerBase
     // ═══════════════════════════════════════
 
     /// <summary>
-    /// Получить все неопубликованные изображения.
+    /// Получить изображения. Фильтр по channelId и unpostedOnly.
     /// Используется Publisher-сервисом для выбора арта.
     /// </summary>
     [HttpGet("images")]
-    public async Task<ActionResult<ApiResponse<List<ImageDto>>>> GetImages([FromQuery] bool unpostedOnly = false)
+    public async Task<ActionResult<ApiResponse<List<ImageDto>>>> GetImages(
+        [FromQuery] bool unpostedOnly = false,
+        [FromQuery] string? channelId = null)
     {
-        var images = await _dataService.GetImagesAsync();
+        var images = await _dataService.GetImagesAsync(channelId);
         if (unpostedOnly)
             images = images.Where(i => i.Posted == 0).ToList();
         return Ok(ApiResponse<List<ImageDto>>.Ok(images));
@@ -71,7 +74,7 @@ public class DataController : ControllerBase
     public async Task<ActionResult<ApiResponse>> MarkPosted(string fileName, [FromBody] MarkPostedRequest request)
     {
         var result = await _dataService.MarkImagePostedAsync(
-            fileName, request.Person, request.PostedAt, request.Caption ?? "");
+            fileName, request.Person, request.PostedAt, request.Caption ?? "", request.ChannelId);
         return result
             ? Ok(ApiResponse.Ok("Image marked as posted"))
             : NotFound(ApiResponse.Error($"Image not found: {fileName}"));
@@ -94,13 +97,14 @@ public class DataController : ControllerBase
     // ═══════════════════════════════════════
 
     /// <summary>
-    /// Получить pending-слоты расписания.
+    /// Получить pending-слоты расписания. Фильтр по channelId.
     /// Вызывается Publisher-сервисом для планирования.
     /// </summary>
     [HttpGet("schedule/pending")]
-    public async Task<ActionResult<ApiResponse<List<ScheduleSlotDto>>>> GetPendingSlots()
+    public async Task<ActionResult<ApiResponse<List<ScheduleSlotDto>>>> GetPendingSlots(
+        [FromQuery] string? channelId = null)
     {
-        var slots = await _dataService.GetScheduleAsync();
+        var slots = await _dataService.GetScheduleAsync(channelId);
         var pending = slots.Where(s => s.Status == "pending").ToList();
         return Ok(ApiResponse<List<ScheduleSlotDto>>.Ok(pending));
     }
@@ -119,6 +123,69 @@ public class DataController : ControllerBase
         return result
             ? Ok(ApiResponse.Ok("Slot status updated"))
             : NotFound(ApiResponse.Error($"Slot not found: {decoded}"));
+    }
+
+    // ═══════════════════════════════════════
+    //  Channels (для Publisher — получить каналы для публикации)
+    // ═══════════════════════════════════════
+
+    /// <summary>
+    /// Получить активные каналы для Publisher-сервиса.
+    /// </summary>
+    [HttpGet("channels/active")]
+    public async Task<ActionResult<ApiResponse<List<ChannelDto>>>> GetActiveChannels()
+    {
+        var channels = await _dataService.GetActiveChannelsAsync();
+        return Ok(ApiResponse<List<ChannelDto>>.Ok(channels));
+    }
+
+    // ═══════════════════════════════════════
+    //  Posting Rules (для Publisher)
+    // ═══════════════════════════════════════
+
+    /// <summary>
+    /// Получить правила публикации. Фильтр по channelId.
+    /// </summary>
+    [HttpGet("rules")]
+    public async Task<ActionResult<ApiResponse<List<PostingRuleDto>>>> GetPostingRules(
+        [FromQuery] string? channelId = null)
+    {
+        var rules = await _dataService.GetPostingRulesAsync(channelId);
+        return Ok(ApiResponse<List<PostingRuleDto>>.Ok(rules));
+    }
+
+    /// <summary>
+    /// Добавить правило публикации.
+    /// </summary>
+    [HttpPost("rules")]
+    public async Task<ActionResult<ApiResponse<PostingRuleDto>>> AddPostingRule([FromBody] PostingRuleDto dto)
+    {
+        var result = await _dataService.AddPostingRuleAsync(dto);
+        return Ok(ApiResponse<PostingRuleDto>.Ok(result, "Rule added"));
+    }
+
+    /// <summary>
+    /// Заменить все правила канала (batch replace).
+    /// Удаляет существующие правила channelId и создаёт новые.
+    /// </summary>
+    [HttpPut("rules")]
+    public async Task<ActionResult<ApiResponse>> ReplacePostingRules(
+        [FromQuery] string? channelId, [FromBody] List<PostingRuleDto> rules)
+    {
+        await _dataService.ReplacePostingRulesAsync(channelId, rules);
+        return Ok(ApiResponse.Ok($"Replaced {rules.Count} rules"));
+    }
+
+    /// <summary>
+    /// Удалить правило публикации по ID.
+    /// </summary>
+    [HttpDelete("rules/{id:int}")]
+    public async Task<ActionResult<ApiResponse>> DeletePostingRule(int id)
+    {
+        var result = await _dataService.DeletePostingRuleAsync(id);
+        return result
+            ? Ok(ApiResponse.Ok("Rule deleted"))
+            : NotFound(ApiResponse.Error($"Rule not found: {id}"));
     }
 
     // ═══════════════════════════════════════
@@ -151,7 +218,7 @@ public class DataController : ControllerBase
 
         await _dataService.AddDownloadRecordAsync(
             request.Source, request.SourceUrl, request.ImageUrl ?? "",
-            request.FileName ?? "", request.Hashtag ?? "");
+            request.FileName ?? "", request.Hashtag ?? "", request.ChannelId);
 
         return Ok(ApiResponse.Ok("Download record added"));
     }
@@ -165,20 +232,6 @@ public class DataController : ControllerBase
         var count = await _dataService.GetDownloadCountAsync(source);
         return Ok(ApiResponse<object>.Ok(new { count, source }));
     }
-
-    // ═══════════════════════════════════════
-    //  Posting Rules (для Publisher)
-    // ═══════════════════════════════════════
-
-    /// <summary>
-    /// Получить все правила публикации.
-    /// </summary>
-    [HttpGet("rules")]
-    public async Task<ActionResult<ApiResponse<List<PostingRuleDto>>>> GetPostingRules()
-    {
-        var rules = await _dataService.GetPostingRulesAsync();
-        return Ok(ApiResponse<List<PostingRuleDto>>.Ok(rules));
-    }
 }
 
 // ─── Request DTOs ───
@@ -188,6 +241,7 @@ public class MarkPostedRequest
     public string? Person { get; set; }
     public string? PostedAt { get; set; }
     public string? Caption { get; set; }
+    public string? ChannelId { get; set; }
 }
 
 public class UpdateSlotStatusRequest
@@ -205,4 +259,5 @@ public class AddDownloadRequest
     public string? ImageUrl { get; set; }
     public string? FileName { get; set; }
     public string? Hashtag { get; set; }
+    public string? ChannelId { get; set; }
 }

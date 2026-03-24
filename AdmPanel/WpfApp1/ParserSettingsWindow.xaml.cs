@@ -2,124 +2,113 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using MAGIAdmin.Services;
 using Newtonsoft.Json.Linq;
 
 namespace MAGIAdmin
 {
     public partial class ParserSettingsWindow : Window
     {
-        private readonly string _configPath;
-        private readonly string _dbPath;
+        private readonly GatewayApiClient _api;
+        private readonly string _channelId;
+        private readonly string _artsRootPath;
 
         /// <summary>
-        /// projectRoot — корень проекта (D:\MAGI), из него строим путь к config.json
+        /// channelId — ID текущего канала для загрузки per-channel конфига из Gateway.
+        /// artsRootPath — путь к корневой папке артов канала (для вычисления download path).
         /// </summary>
-        public ParserSettingsWindow(string projectRoot)
+        public ParserSettingsWindow(string channelId, string artsRootPath = null)
         {
             InitializeComponent();
 
-            _configPath = Path.Combine(projectRoot, "data", "json", "parser", "config.json");
-            _dbPath = Path.Combine(projectRoot, "data", "json", "parser");
+            _channelId = channelId;
+            _artsRootPath = artsRootPath;
+            _api = new GatewayApiClient();
 
-            TbConfigPath.Text = _configPath;
-            TbDbPath.Text = _dbPath;
+            TbConfigPath.Text = $"Gateway -> Channel {_channelId}";
 
-            LoadSettings();
+            Loaded += async (_, __) => await LoadFromGatewayAsync();
         }
 
-        private void LoadSettings()
+        private async System.Threading.Tasks.Task LoadFromGatewayAsync()
         {
             try
             {
-                if (!File.Exists(_configPath)) return;
-                var json = JObject.Parse(File.ReadAllText(_configPath));
-
-                // Download path
-                TbDownloadPath.Text = json["downloadPath"]?.ToString() ?? "";
-
-                // Numeric fields
-                TbImagesPerHashtag.Text = json["imagesPerHashtag"]?.ToString() ?? "50";
-                TbScrollDelay.Text = json["scrollDelayMs"]?.ToString() ?? "2000";
-                TbImageDelay.Text = json["imageLoadDelayMs"]?.ToString() ?? "1000";
-
-                // Hashtags — массив строк, каждый на новой строке
-                var hashtags = json["hashtags"] as JArray;
-                if (hashtags != null)
+                var response = await _api.GetParserConfigAsync(_channelId);
+                var data = response?["data"] as JObject;
+                if (data == null)
                 {
-                    TbHashtags.Text = string.Join(Environment.NewLine,
-                        hashtags.Select(h => h.ToString()));
+                    TbConfigPath.Text = "Конфиг не найден — будет создан при сохранении";
+                    return;
                 }
 
-                // Негативные хэштеги для Pixiv
-                var negativeHashtags = json["negativeHashtags"] as JArray;
-                if (negativeHashtags != null)
-                {
-                    TbNegativeHashtags.Text = string.Join(Environment.NewLine,
-                        negativeHashtags.Select(h => h.ToString()));
-                }
-            }
-            catch { }
-        }
-
-        private void BrowseDownloadPath_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (!string.IsNullOrEmpty(TbDownloadPath.Text) && Directory.Exists(TbDownloadPath.Text))
-                dialog.SelectedPath = TbDownloadPath.Text;
-
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                TbDownloadPath.Text = dialog.SelectedPath;
-        }
-
-        private void Save_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Читаем существующий JSON или создаём новый
-                JObject json;
-                if (File.Exists(_configPath))
-                    json = JObject.Parse(File.ReadAllText(_configPath));
+                // Путь загрузки = ArtsRootPath / New-Images (readonly, вычисляется из канала)
+                if (!string.IsNullOrEmpty(_artsRootPath))
+                    TbDownloadPath.Text = System.IO.Path.Combine(_artsRootPath, "New-Images");
                 else
-                    json = new JObject();
+                    TbDownloadPath.Text = "";
+                TbImagesPerHashtag.Text = data["imagesPerHashtag"]?.ToString() ?? "50";
+                TbScrollDelay.Text = data["scrollDelayMs"]?.ToString() ?? "2000";
+                TbImageDelay.Text = data["imageLoadDelayMs"]?.ToString() ?? "1000";
 
-                // Хэштеги: текст → массив (разбиваем по строкам, убираем пустые)
-                var lines = TbHashtags.Text
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim())
-                    .Where(l => l.Length > 0)
-                    .ToArray();
-                json["hashtags"] = new JArray(lines);
+                var hashtags = data["hashtags"] as JArray;
+                if (hashtags != null)
+                    TbHashtags.Text = string.Join(Environment.NewLine, hashtags.Select(h => h.ToString()));
 
-                // Негативные хэштеги для Pixiv
-                var negLines = TbNegativeHashtags.Text
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim())
-                    .Where(l => l.Length > 0)
-                    .ToArray();
-                json["negativeHashtags"] = new JArray(negLines);
+                var negHashtags = data["negativeHashtags"] as JArray;
+                if (negHashtags != null)
+                    TbNegativeHashtags.Text = string.Join(Environment.NewLine, negHashtags.Select(h => h.ToString()));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка загрузки конфига парсера: " + ex.Message, "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
 
-                // Числовые поля
-                int val;
-                if (int.TryParse(TbImagesPerHashtag.Text.Trim(), out val))
-                    json["imagesPerHashtag"] = val;
+        private async void Save_Click(object sender, RoutedEventArgs e)
+        {
+            var lines = TbHashtags.Text
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim())
+                .Where(l => l.Length > 0)
+                .ToArray();
 
-                json["downloadPath"] = TbDownloadPath.Text.Trim();
+            var negLines = TbNegativeHashtags.Text
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim())
+                .Where(l => l.Length > 0)
+                .ToArray();
 
-                if (int.TryParse(TbScrollDelay.Text.Trim(), out val))
-                    json["scrollDelayMs"] = val;
+            int.TryParse(TbImagesPerHashtag.Text.Trim(), out int imagesPerHashtag);
+            int.TryParse(TbScrollDelay.Text.Trim(), out int scrollDelay);
+            int.TryParse(TbImageDelay.Text.Trim(), out int imageDelay);
 
-                if (int.TryParse(TbImageDelay.Text.Trim(), out val))
-                    json["imageLoadDelayMs"] = val;
+            try
+            {
+                var configData = new
+                {
+                    hashtags = lines,
+                    negativeHashtags = negLines,
+                    imagesPerHashtag = imagesPerHashtag,
+                    scrollDelayMs = scrollDelay,
+                    imageLoadDelayMs = imageDelay,
+                    sources = "pinterest"
+                };
 
-                // databasePath — обновляем на Pinterest формат
-                json["databasePath"] = Path.Combine(_dbPath, "Pinterest_downloaded_images.json");
-
-                // Сохраняем
-                Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
-                File.WriteAllText(_configPath, json.ToString());
-
-                MessageBox.Show("Настройки парсера сохранены.", "Сохранено",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                var result = await _api.UpdateParserConfigAsync(_channelId, configData);
+                var success = result?["success"]?.Value<bool>() ?? false;
+                if (success)
+                {
+                    MessageBox.Show("Настройки парсера сохранены.", "Сохранено",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    var msg = result?["message"]?.ToString() ?? "Неизвестная ошибка";
+                    MessageBox.Show("Ошибка сохранения: " + msg, "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
@@ -130,6 +119,7 @@ namespace MAGIAdmin
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
+            _api?.Dispose();
             Close();
         }
     }

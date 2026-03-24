@@ -10,119 +10,136 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 
 ---
 
-## Вкладки
+## Архитектура: Канал = контейнер
 
-### ⚙ Микросервисы
+**Все данные и настройки привязаны к конкретному каналу:**
 
-Запуск и остановка Python-скриптов. Вывод (stdout/stderr) отображается в консоли логов.
+```
+[Глобальный ComboBox канала] -> выбран канал
+  |
+  ├── Вкладка "Микросервисы" -> запуск с channelId
+  ├── Вкладка "База артов"   -> фильтр по ArtsRootPath канала
+  ├── Вкладка "Расписание"   -> фильтр по channelId
+  ├── ParserSettingsWindow    -> per-channel ChannelParserConfig
+  ├── TaggerSettingsWindow    -> per-channel ChannelTaggerConfig
+  └── AutopostSettingsWindow  -> Telegram-креденшалы канала
+```
 
-| Сервис | Скрипт | Настройки (кнопка ⚙) | Читает конфиг |
-|---|---|---|---|
-| Parser Pinterest | `Parser/PinterestParser.py` | `ParserSettingsWindow` | `data/json/Parser/config.json` |
-| Parser Pixiv | `Parser/PixivParser.py` | `ParserSettingsWindow` | `data/json/Parser/config.json` |
-| Tagger | `FilenameTagger/FilenameTagger.py` | `TaggerSettingsWindow` | `user_settings.json["tagger"]` |
-| Auto-post | `Auto-post/Auto-post.py` | `AutopostSettingsWindow` | `user_settings.json["telegram"]` |
-
-> Путь к Python захардкожен в `MainWindow.xaml.cs → GetPythonExe()`. При переносе на другую машину изменить вручную.
+**Если канал не выбран** -> все окна и данные пустые, запуск сервисов заблокирован.
 
 ---
 
-### 📁 База артов
+## Вкладки
 
-Галерея всех изображений из `arts_root` с метаданными.
+### Микросервисы
 
-**Читает:**
-- Файлы из `New-Images`, `Check-Images`, `Post-Images` и других подпапок `arts_root`
-- `images.json` → поле `person` (колонка «Персонаж»)
-- `posted_images.json` → метка «Опубликован»
+Запуск и остановка Python-скриптов. Вывод (stdout/stderr) отображается в консоли логов.
+
+| Сервис | Настройки (кнопка) | Источник конфига |
+|---|---|---|
+| Parser Pinterest/Pixiv | `ParserSettingsWindow` | Gateway: `ChannelParserConfig` (fallback: JSON) |
+| Tagger | `TaggerSettingsWindow` | Gateway: `ChannelTaggerConfig` (fallback: JSON) |
+| Auto-post | `AutopostSettingsWindow` | Gateway: данные канала |
+
+Все сервисы запускаются с `channelId` в body запроса к Gateway.
+
+> Путь к Python захардкожен в `MainWindow.xaml.cs -> GetPythonExe()`. При переносе на другую машину изменить вручную.
+
+---
+
+### База артов
+
+Галерея изображений из `ArtsRootPath` выбранного канала с метаданными из Gateway.
+
+**Источник данных:**
+- Файлы из `New-Images`, `Check-Images`, `Post-Images` подпапок `ArtsRootPath` канала
+- Метаданные из Gateway API (`GET /api/data/images?channelId=...`)
 
 **Режимы отображения:**
-- **⊞ Сетка** — превью плитками
-- **☰ Список** — таблица: Имя файла / Персонаж / Опубликован
+- **Сетка** — превью плитками
+- **Список** — таблица: Имя файла / Персонаж / Опубликован
 
 **Фильтры:** вкладки папок, поиск по имени, сортировка по дате / имени / размеру
 
-**Контекстное меню (ПКМ на изображении):** Открыть · Удалить · Пометить опубликованным · Копировать путь
+**Контекстное меню (ПКМ):** Открыть / Удалить / Пометить опубликованным / Копировать путь
 
 **Очистка:** удалить все видимые / удалить опубликованные
 
 ---
 
-### 📅 Расписание
+### Расписание
 
 Управление расписанием публикаций и правилами постинга.
 
-**Читает/пишет:** `data/json/schedule.json`, `%APPDATA%\MAGI\posting_rules.json`
+**Источник данных:** Gateway API (`GET /api/schedule?channelId=...`), fallback: JSON
 
-#### Таблица расписания
-
-Столбцы: **Дата · День недели · Время · Изображение · Персонаж · Подпись**
+Столбцы: **Дата / День недели / Время / Изображение / Персонаж / Подпись**
 
 | Действие | Результат |
 |---|---|
-| Добавить / Изменить / Удалить слот | Редактирование `schedule.json` в памяти |
-| Сохранить | Запись `schedule.json` на диск |
-| Применить правила | Генерация `pending`-слотов по `posting_rules.json` (защищает `scheduled`/`posted` слоты) |
-
-#### Параметры расписания
-
-Находятся над таблицей:
-- **Часовой пояс** — сохраняется в `user_settings.json["schedule"]["time_zone"]`
-- **Планировать дней** — сохраняется в `user_settings.json["schedule"]["schedule_days"]`
+| Добавить / Изменить / Удалить слот | Редактирование в памяти |
+| Сохранить | Запись через Gateway API (с channelId) или JSON |
+| Применить правила | Генерация `pending`-слотов по правилам постинга |
 
 #### Панель правил постинга
 
-Нижняя часть вкладки. Редактирует `posting_rules.json` (формат v2 — массив `rules[]`):
+Нижняя часть вкладки:
 
 | Действие | Результат |
 |---|---|
-| **+ Добавить время** | Открывает диалог: время, дни недели (чекбоксы Пн–Вс), подпись |
-| Изменить правило | Редактирование выбранного правила |
-| Удалить правило | Удаление из списка |
-| Сохранить правила | Запись `posting_rules.json` на диск |
-
-> Одно время можно добавить несколько раз с разными наборами дней — для разных подписей в разные дни недели.
+| **+ Добавить время** | Диалог: время, дни недели, подпись |
+| Изменить/Удалить правило | Редактирование/удаление |
+| Сохранить правила | Запись в файл |
 
 ---
 
 ## Окна настроек
 
 ### ParserSettingsWindow
-**Файл:** `data/json/Parser/config.json`
+**Источник:** Gateway `GET /api/channel/{id}/parser-config` (fallback: `data/json/Parser/config.json`)
 
-| Поле | JSON-ключ |
+| Поле | Ключ |
 |---|---|
-| Путь загрузки | `downloadPath` |
+| Путь загрузки | `downloadPath` (только JSON) |
 | Хэштеги | `hashtags` |
-| Негативные хэштеги (только Pixiv) | `negativeHashtags` |
+| Негативные хэштеги (Pixiv) | `negativeHashtags` |
 | Изображений на хэштег | `imagesPerHashtag` |
 | Задержка прокрутки (мс) | `scrollDelayMs` |
 | Задержка загрузки (мс) | `imageLoadDelayMs` |
 
 ### TaggerSettingsWindow
-**Файл:** `%APPDATA%\MAGI\user_settings.json` → секция `tagger`
+**Источник:** Gateway `GET /api/channel/{id}/tagger-config` (fallback: `user_settings.json -> tagger`)
 
-| Поле | JSON-ключ |
+| Поле | Ключ |
 |---|---|
-| Шаблон переименования | `tagger.rename_template` |
-| Разделитель | `tagger.separator` |
-| Только новые | `tagger.only_new` |
-| Режим (rename/copy) | `tagger.mode` |
-
-> Эти поля в текущей версии `FilenameTagger.py` не используются — он работает только через `filename_tags.json`.
+| Шаблон переименования | `renameTemplate` |
+| Разделитель | `separator` |
+| Только новые | `onlyNew` |
+| Режим (rename/copy) | `mode` |
 
 ### AutopostSettingsWindow
-**Файл:** `%APPDATA%\MAGI\user_settings.json` → секция `telegram`
+**Источник:** Gateway `GET /api/channel` -> данные канала по ID
 
-| Поле | JSON-ключ |
+| Поле | Описание |
 |---|---|
-| Ссылка на канал | `telegram.channel_link` |
-| API ID | `telegram.api_id` |
-| API Hash | `telegram.api_hash` |
-| Session file | `telegram.session_file` |
-| Bot Token | `telegram.bot_token` |
+| Ссылка на канал | `link` канала |
+| API ID | `apiId` канала |
+| API Hash | `apiHash` канала |
+| Session file | `sessionFile` канала |
+| Bot Token | `botToken` канала |
 
-> **Часовой пояс** и **Планировать дней** редактируются только на вкладке «Расписание», не здесь.
+Изменения синхронизированы с ChannelManagementWindow (один источник данных — Gateway).
+
+### ChannelManagementWindow
+Полное управление каналами: создание, редактирование, удаление.
+
+| Функция | Описание |
+|---|---|
+| Создание канала | Автосоздание дефолтных конфигов парсера/теггера |
+| Session file | Browse через OpenFileDialog (.session) |
+| Создать папку | Создаёт `{путь}/{Название}-Images/` с подпапками |
+| Arts Root Path | Browse через FolderBrowserDialog |
+| Удаление | Каскадное удаление конфигов, расписания |
 
 ---
 
@@ -131,8 +148,11 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 | Файл | Описание |
 |---|---|
 | `WpfApp1.csproj` | SDK-style .NET 8, NuGet: `Newtonsoft.Json 13.0.3` |
-| `MainWindow.xaml / .cs` | Главное окно, навигация, запуск процессов |
-| `Models.cs` | `ImageItem`, `ScheduleSlot`, `PostTimeEntry`, `LogEntry` |
-| `ParserSettingsWindow.xaml / .cs` | Настройки парсера |
-| `TaggerSettingsWindow.xaml / .cs` | Настройки теггера |
-| `AutopostSettingsWindow.xaml / .cs` | Настройки Telegram |
+| `MainWindow.xaml / .cs` | Главное окно, навигация, channel context |
+| `Models.cs` | `ImageItem`, `ScheduleSlot`, `PostTimeEntry`, `LogEntry`, `ChannelSelectorItem`, `ServiceStatus` |
+| `Services/GatewayApiClient.cs` | HTTP-клиент к API Gateway (channels, configs, schedule, images) |
+| `ViewModels/` | MVVM ViewModels (с поддержкой ChannelId) |
+| `ParserSettingsWindow.xaml / .cs` | Per-channel настройки парсера |
+| `TaggerSettingsWindow.xaml / .cs` | Per-channel настройки теггера |
+| `AutopostSettingsWindow.xaml / .cs` | Telegram-креденшалы канала (из Gateway) |
+| `ChannelManagementWindow.xaml / .cs` | CRUD управление каналами |

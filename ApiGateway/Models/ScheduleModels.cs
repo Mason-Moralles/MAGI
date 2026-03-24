@@ -12,6 +12,7 @@ public class ScheduleSlotDto
     public string? File { get; set; }
     public string? Person { get; set; }
     public string Caption { get; set; } = "";
+    public string? ChannelId { get; set; }
 }
 
 /// <summary>
@@ -22,6 +23,26 @@ public class ScheduleSlotRequest
     public string Date { get; set; } = "";
     public string Time { get; set; } = "";
     public string? Caption { get; set; }
+    public string? ChannelId { get; set; }
+}
+
+/// <summary>
+/// Запрос обновления слота (isoKey в body, чтобы избежать проблем с URL-кодированием +/:).
+/// </summary>
+public class ScheduleSlotUpdateRequest
+{
+    public string IsoKey { get; set; } = "";
+    public string Date { get; set; } = "";
+    public string Time { get; set; } = "";
+    public string? Caption { get; set; }
+}
+
+/// <summary>
+/// Запрос удаления слота (isoKey в body).
+/// </summary>
+public class ScheduleSlotDeleteRequest
+{
+    public string IsoKey { get; set; } = "";
 }
 
 /// <summary>
@@ -32,6 +53,7 @@ public class PostingRuleDto
     public string Time { get; set; } = "";
     public List<string> Days { get; set; } = new();
     public string Caption { get; set; } = "";
+    public string? ChannelId { get; set; }
 }
 
 /// <summary>
@@ -44,4 +66,5 @@ public class ImageDto
     public int Posted { get; set; }
     public string? PostTime { get; set; }
     public string Caption { get; set; } = "";
+    public string? ChannelId { get; set; }
 }

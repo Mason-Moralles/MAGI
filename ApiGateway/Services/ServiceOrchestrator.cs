@@ -5,22 +5,30 @@ namespace MAGI.ApiGateway.Services;
 /// <summary>
 /// Оркестратор микросервисов MAGI.
 /// Управляет запуском, остановкой и мониторингом Python-сервисов.
+/// Автоматически поднимает Python-процесс, если сервис не запущен.
 /// </summary>
 public class ServiceOrchestrator
 {
     private readonly PythonServiceClient _client;
+    private readonly ProcessManager _processManager;
     private readonly IConfiguration _config;
     private readonly ILogger<ServiceOrchestrator> _logger;
 
     // Кэш статусов для быстрого отображения
     private readonly Dictionary<string, ServiceStatusDto> _serviceStatuses = new();
 
+    /// <summary>Максимальное время ожидания готовности сервиса после запуска процесса.</summary>
+    private const int StartupTimeoutMs = 10_000;
+    private const int HealthPollIntervalMs = 500;
+
     public ServiceOrchestrator(
         PythonServiceClient client,
+        ProcessManager processManager,
         IConfiguration config,
         ILogger<ServiceOrchestrator> logger)
     {
         _client = client;
+        _processManager = processManager;
         _config = config;
         _logger = logger;
 
@@ -93,7 +101,7 @@ public class ServiceOrchestrator
     }
 
     /// <summary>
-    /// Запускает задачу на сервисе.
+    /// Запускает задачу на сервисе. Если Python-процесс не запущен — автоматически поднимает его.
     /// </summary>
     public async Task<TaskResultDto?> RunServiceAsync(string serviceKey, object? requestBody = null)
     {
@@ -103,13 +111,34 @@ public class ServiceOrchestrator
             return null;
         }
 
+        // 1. Проверяем, жив ли сервис
         var isHealthy = await _client.IsHealthyAsync(status.BaseUrl);
+
+        // 2. Если нет — запускаем Python-процесс и ждём готовности
         if (!isHealthy)
         {
-            _logger.LogWarning("Service {Key} is not available at {Url}", serviceKey, status.BaseUrl);
-            return null;
+            _logger.LogInformation("Service {Key} is not running, starting process...", serviceKey);
+
+            var started = _processManager.StartService(serviceKey);
+            if (!started)
+            {
+                _logger.LogError("Failed to start process for service {Key}", serviceKey);
+                return null;
+            }
+
+            // Ждём, пока /health начнёт отвечать
+            isHealthy = await WaitForHealthAsync(status.BaseUrl, serviceKey);
+            if (!isHealthy)
+            {
+                _logger.LogError("Service {Key} did not become healthy within {Timeout}ms", serviceKey, StartupTimeoutMs);
+                _processManager.StopService(serviceKey);
+                return null;
+            }
+
+            _logger.LogInformation("Service {Key} is ready", serviceKey);
         }
 
+        // 3. Отправляем задачу
         var result = await _client.RunAsync(status.BaseUrl, requestBody);
         if (result != null)
         {
@@ -121,20 +150,28 @@ public class ServiceOrchestrator
     }
 
     /// <summary>
-    /// Останавливает задачу на сервисе.
+    /// Останавливает задачу на сервисе и (опционально) убивает процесс.
     /// </summary>
-    public async Task<bool> StopServiceAsync(string serviceKey)
+    public async Task<bool> StopServiceAsync(string serviceKey, bool killProcess = false)
     {
         if (!_serviceStatuses.TryGetValue(serviceKey, out var status))
             return false;
 
+        // Пытаемся мягко остановить через API
         var stopped = await _client.StopAsync(status.BaseUrl);
-        if (stopped)
+
+        // Если нужно убить процесс
+        if (killProcess)
+        {
+            _processManager.StopService(serviceKey);
+        }
+
+        if (stopped || killProcess)
         {
             status.Status = "stopped";
         }
 
-        return stopped;
+        return stopped || killProcess;
     }
 
     /// <summary>
@@ -143,5 +180,30 @@ public class ServiceOrchestrator
     public string? GetServiceUrl(string serviceKey)
     {
         return _serviceStatuses.TryGetValue(serviceKey, out var status) ? status.BaseUrl : null;
+    }
+
+    /// <summary>
+    /// Поллит /health до ответа или таймаута.
+    /// </summary>
+    private async Task<bool> WaitForHealthAsync(string baseUrl, string serviceKey)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        while (sw.ElapsedMilliseconds < StartupTimeoutMs)
+        {
+            await Task.Delay(HealthPollIntervalMs);
+
+            // Процесс мог упасть — проверяем
+            if (!_processManager.IsProcessRunning(serviceKey))
+            {
+                _logger.LogWarning("Service {Key} process exited during startup", serviceKey);
+                return false;
+            }
+
+            if (await _client.IsHealthyAsync(baseUrl))
+                return true;
+        }
+
+        return false;
     }
 }

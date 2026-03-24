@@ -1,7 +1,7 @@
 """
 gateway_client.py — HTTP-клиент для взаимодействия Python-сервисов с API Gateway.
 
-Все операции с данными (images, schedule, downloads) проходят через API Gateway,
+Все операции с данными (images, schedule, downloads, channels) проходят через API Gateway,
 который хранит данные в SQLite через Entity Framework Core.
 
 Использование:
@@ -28,9 +28,13 @@ class GatewayClient:
     #  Images (Tagger → Gateway, Publisher → Gateway)
     # ═══════════════════════════════════════
 
-    def get_images(self, unposted_only: bool = False) -> list[dict]:
+    def get_images(self, unposted_only: bool = False, channel_id: Optional[str] = None) -> list[dict]:
         """Получить изображения из базы."""
-        params = {"unpostedOnly": "true"} if unposted_only else {}
+        params = {}
+        if unposted_only:
+            params["unpostedOnly"] = "true"
+        if channel_id:
+            params["channelId"] = channel_id
         resp = self._session.get(f"{self.base_url}/api/data/images", params=params)
         resp.raise_for_status()
         return resp.json().get("data", [])
@@ -43,7 +47,7 @@ class GatewayClient:
         resp.raise_for_status()
         return resp.json().get("data")
 
-    def add_image(self, file_name: str, person: str, caption: str = "") -> dict:
+    def add_image(self, file_name: str, person: str, caption: str = "", channel_id: Optional[str] = None) -> dict:
         """Добавить изображение (вызывается Tagger)."""
         payload = {
             "fileName": file_name,
@@ -51,6 +55,8 @@ class GatewayClient:
             "posted": 0,
             "caption": caption,
         }
+        if channel_id:
+            payload["channelId"] = channel_id
         resp = self._session.post(f"{self.base_url}/api/data/images", json=payload)
         resp.raise_for_status()
         return resp.json().get("data", {})
@@ -61,9 +67,16 @@ class GatewayClient:
         person: Optional[str] = None,
         posted_at: Optional[str] = None,
         caption: str = "",
+        channel_id: Optional[str] = None,
     ) -> bool:
         """Пометить изображение как опубликованное (вызывается Publisher)."""
-        payload = {"person": person, "postedAt": posted_at, "caption": caption}
+        payload = {
+            "person": person,
+            "postedAt": posted_at,
+            "caption": caption,
+        }
+        if channel_id:
+            payload["channelId"] = channel_id
         resp = self._session.post(
             f"{self.base_url}/api/data/images/{file_name}/posted", json=payload
         )
@@ -78,9 +91,12 @@ class GatewayClient:
     #  Schedule (Publisher → Gateway)
     # ═══════════════════════════════════════
 
-    def get_pending_slots(self) -> list[dict]:
+    def get_pending_slots(self, channel_id: Optional[str] = None) -> list[dict]:
         """Получить pending-слоты расписания."""
-        resp = self._session.get(f"{self.base_url}/api/data/schedule/pending")
+        params = {}
+        if channel_id:
+            params["channelId"] = channel_id
+        resp = self._session.get(f"{self.base_url}/api/data/schedule/pending", params=params)
         resp.raise_for_status()
         return resp.json().get("data", [])
 
@@ -99,6 +115,16 @@ class GatewayClient:
             json=payload,
         )
         return resp.status_code == 200
+
+    # ═══════════════════════════════════════
+    #  Channels (Publisher → Gateway)
+    # ═══════════════════════════════════════
+
+    def get_active_channels(self) -> list[dict]:
+        """Получить активные каналы для публикации."""
+        resp = self._session.get(f"{self.base_url}/api/data/channels/active")
+        resp.raise_for_status()
+        return resp.json().get("data", [])
 
     # ═══════════════════════════════════════
     #  Download Records (Parser → Gateway)
@@ -120,6 +146,7 @@ class GatewayClient:
         image_url: str = "",
         file_name: str = "",
         hashtag: str = "",
+        channel_id: Optional[str] = None,
     ) -> bool:
         """Добавить запись о скачивании."""
         payload = {
@@ -129,6 +156,8 @@ class GatewayClient:
             "fileName": file_name,
             "hashtag": hashtag,
         }
+        if channel_id:
+            payload["channelId"] = channel_id
         resp = self._session.post(f"{self.base_url}/api/data/downloads", json=payload)
         return resp.status_code == 200
 
@@ -142,12 +171,41 @@ class GatewayClient:
         return resp.json().get("data", {}).get("count", 0)
 
     # ═══════════════════════════════════════
+    #  Channel Config (Parser → Gateway)
+    # ═══════════════════════════════════════
+
+    def get_channel(self, channel_id: str) -> Optional[dict]:
+        """Получить данные канала (включая ArtsRootPath)."""
+        resp = self._session.get(f"{self.base_url}/api/channel/{channel_id}")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json().get("data")
+
+    def get_filename_tags(self, channel_id: str) -> list[dict]:
+        """Получить filename-теги для канала [{keyword, tag}, ...]."""
+        resp = self._session.get(f"{self.base_url}/api/channel/{channel_id}/filename-tags")
+        resp.raise_for_status()
+        return resp.json().get("data", [])
+
+    def get_parser_config(self, channel_id: str) -> Optional[dict]:
+        """Получить конфигурацию парсера для канала."""
+        resp = self._session.get(f"{self.base_url}/api/channel/{channel_id}/parser-config")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json().get("data")
+
+    # ═══════════════════════════════════════
     #  Posting Rules (Publisher → Gateway)
     # ═══════════════════════════════════════
 
-    def get_posting_rules(self) -> list[dict]:
+    def get_posting_rules(self, channel_id: Optional[str] = None) -> list[dict]:
         """Получить правила публикации."""
-        resp = self._session.get(f"{self.base_url}/api/data/rules")
+        params = {}
+        if channel_id:
+            params["channelId"] = channel_id
+        resp = self._session.get(f"{self.base_url}/api/data/rules", params=params)
         resp.raise_for_status()
         return resp.json().get("data", [])
 

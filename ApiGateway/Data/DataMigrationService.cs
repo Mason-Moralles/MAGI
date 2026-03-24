@@ -28,8 +28,12 @@ public class DataMigrationService
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MagiDbContext>();
 
-        // Применяем миграции / создаём БД
+        // Создаём БД если не существует
         await db.Database.EnsureCreatedAsync();
+
+        // Гарантируем существование ВСЕХ таблиц (EnsureCreatedAsync не обновляет существующую БД).
+        // Если БД была создана ранее с неполной схемой, недостающие таблицы создаются вручную.
+        await EnsureTablesExistAsync(db);
 
         var projectRoot = ResolveProjectRoot();
         _logger.LogInformation("Data migration: ProjectRoot={Root}", projectRoot);
@@ -41,6 +45,7 @@ public class DataMigrationService
         await MigrateDownloadRecordsAsync(db, projectRoot);
         await MigratePostingRulesAsync(db);
         await MigrateChannelsAsync(db, projectRoot);
+        await MigrateFilenameTagsAsync(db, projectRoot);
 
         await db.SaveChangesAsync();
         _logger.LogInformation("Data migration completed.");
@@ -280,6 +285,197 @@ public class DataMigrationService
 
         await db.SaveChangesAsync();
         _logger.LogInformation("Migrated channels from channels.json");
+    }
+
+    // ─── Filename Tags (filename_tags.json → FilenameTags per channel) ───
+
+    private async Task MigrateFilenameTagsAsync(MagiDbContext db, string projectRoot)
+    {
+        if (await db.FilenameTags.AnyAsync()) return;
+
+        var path = Path.Combine(projectRoot, "data", "json", "FilenameTagger", "filename_tags.json");
+        if (!File.Exists(path)) return;
+
+        Dictionary<string, string>? tags;
+        try
+        {
+            var json = await File.ReadAllTextAsync(path);
+            tags = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+        }
+        catch { return; }
+
+        if (tags == null || tags.Count == 0) return;
+
+        // Применяем теги ко всем существующим каналам
+        var channels = await db.Channels.Select(c => c.Id).ToListAsync();
+        if (channels.Count == 0) return;
+
+        int total = 0;
+        foreach (var channelId in channels)
+        {
+            foreach (var (keyword, tag) in tags)
+            {
+                db.FilenameTags.Add(new FilenameTagEntity
+                {
+                    Keyword = keyword,
+                    Tag = tag,
+                    ChannelId = channelId
+                });
+                total++;
+            }
+        }
+
+        await db.SaveChangesAsync();
+        _logger.LogInformation("Migrated {Count} filename tags from filename_tags.json to {Channels} channel(s)", tags.Count, channels.Count);
+    }
+
+    // ─── Ensure all tables exist (schema forward-compatibility) ───
+
+    private async Task EnsureTablesExistAsync(MagiDbContext db)
+    {
+        // Проверяем наличие таблиц, которые могли быть добавлены после первоначального создания БД.
+        // SQLite: sqlite_master содержит список всех таблиц.
+        var existingTables = new HashSet<string>();
+        using (var cmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            await db.Database.OpenConnectionAsync();
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table'";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                existingTables.Add(reader.GetString(0));
+        }
+
+        var tablesToCreate = new Dictionary<string, string>
+        {
+            ["ChannelParserConfigs"] = @"
+                CREATE TABLE IF NOT EXISTS ChannelParserConfigs (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ChannelId TEXT NOT NULL,
+                    Hashtags TEXT NOT NULL DEFAULT '[]',
+                    NegativeHashtags TEXT NOT NULL DEFAULT '[]',
+                    ImagesPerHashtag INTEGER NOT NULL DEFAULT 50,
+                    ScrollDelayMs INTEGER NOT NULL DEFAULT 2000,
+                    ImageLoadDelayMs INTEGER NOT NULL DEFAULT 1000,
+                    Sources TEXT NOT NULL DEFAULT 'pinterest'
+                )",
+            ["ChannelTaggerConfigs"] = @"
+                CREATE TABLE IF NOT EXISTS ChannelTaggerConfigs (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ChannelId TEXT NOT NULL,
+                    RenameTemplate TEXT NOT NULL DEFAULT '{artist}_{title}_{id}',
+                    Separator TEXT NOT NULL DEFAULT '_',
+                    OnlyNew INTEGER NOT NULL DEFAULT 1,
+                    Mode TEXT NOT NULL DEFAULT 'rename'
+                )",
+            ["PostingRules"] = @"
+                CREATE TABLE IF NOT EXISTS PostingRules (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ChannelId TEXT,
+                    Time TEXT NOT NULL DEFAULT '',
+                    Days TEXT NOT NULL DEFAULT '',
+                    Caption TEXT NOT NULL DEFAULT ''
+                )",
+            ["DownloadRecords"] = @"
+                CREATE TABLE IF NOT EXISTS DownloadRecords (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Source TEXT NOT NULL DEFAULT '',
+                    SourceUrl TEXT NOT NULL DEFAULT '',
+                    ImageUrl TEXT NOT NULL DEFAULT '',
+                    FileName TEXT NOT NULL DEFAULT '',
+                    Hashtag TEXT NOT NULL DEFAULT '',
+                    DownloadedAt TEXT NOT NULL DEFAULT ''
+                )",
+            ["FilenameTags"] = @"
+                CREATE TABLE IF NOT EXISTS FilenameTags (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ChannelId TEXT NOT NULL,
+                    Keyword TEXT NOT NULL,
+                    Tag TEXT NOT NULL
+                )"
+        };
+
+        foreach (var (table, createSql) in tablesToCreate)
+        {
+            if (!existingTables.Contains(table))
+            {
+                using var cmd = db.Database.GetDbConnection().CreateCommand();
+                cmd.CommandText = createSql;
+                await cmd.ExecuteNonQueryAsync();
+                _logger.LogInformation("Created missing table: {Table}", table);
+            }
+        }
+
+        // ─── Проверяем недостающие колонки в существующих таблицах ───
+        await EnsureMissingColumnsAsync(db);
+    }
+
+    /// <summary>
+    /// Добавляет недостающие колонки в существующие таблицы.
+    /// SQLite поддерживает ALTER TABLE ADD COLUMN, но не ALTER/DROP COLUMN.
+    /// </summary>
+    private async Task EnsureMissingColumnsAsync(MagiDbContext db)
+    {
+        // Таблица → список (колонка, тип, default)
+        var requiredColumns = new Dictionary<string, List<(string Column, string TypeAndDefault)>>
+        {
+            ["Channels"] = new()
+            {
+                ("ArtsRootPath", "TEXT NOT NULL DEFAULT ''"),
+                ("NetworkId", "TEXT"),
+                ("SessionFile", "TEXT"),
+                ("BotToken", "TEXT"),
+                ("ApiId", "INTEGER"),
+                ("ApiHash", "TEXT"),
+                ("TimeZone", "TEXT NOT NULL DEFAULT 'Europe/Moscow'"),
+                ("DelayBetweenPosts", "INTEGER NOT NULL DEFAULT 5"),
+            },
+            ["Images"] = new()
+            {
+                ("ChannelId", "TEXT"),
+            },
+            ["PostedImages"] = new()
+            {
+                ("ChannelId", "TEXT"),
+            },
+            ["ScheduleSlots"] = new()
+            {
+                ("ChannelId", "TEXT"),
+            },
+            ["PostingRules"] = new()
+            {
+                ("ChannelId", "TEXT"),
+            },
+            ["DownloadRecords"] = new()
+            {
+                ("ChannelId", "TEXT"),
+            },
+        };
+
+        foreach (var (table, columns) in requiredColumns)
+        {
+            // Получаем существующие колонки через PRAGMA
+            var existingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = $"PRAGMA table_info({table})";
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                    existingCols.Add(reader.GetString(1)); // column name
+            }
+
+            if (existingCols.Count == 0) continue; // таблица не существует, пропускаем
+
+            foreach (var (col, typeDef) in columns)
+            {
+                if (!existingCols.Contains(col))
+                {
+                    using var cmd = db.Database.GetDbConnection().CreateCommand();
+                    cmd.CommandText = $"ALTER TABLE {table} ADD COLUMN {col} {typeDef}";
+                    await cmd.ExecuteNonQueryAsync();
+                    _logger.LogInformation("Added column {Table}.{Column}", table, col);
+                }
+            }
+        }
     }
 
     // ─── JSON helpers ───

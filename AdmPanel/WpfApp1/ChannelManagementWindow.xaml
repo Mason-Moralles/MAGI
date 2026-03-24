@@ -1,0 +1,294 @@
+<Window x:Class="MAGIAdmin.ChannelManagementWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Управление каналами" Height="916" Width="860"
+        WindowStartupLocation="CenterOwner"
+        Background="#DCD8F0"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+        <Style x:Key="HintText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="#999"/>
+            <Setter Property="Margin" Value="140,0,0,4"/>
+        </Style>
+        <Style x:Key="FieldInput" TargetType="TextBox">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#B5B5D8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#666"/>
+            <Setter Property="Margin" Value="0,12,0,6"/>
+        </Style>
+        <Style x:Key="ActionBtn" TargetType="Button">
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- LEFT: Channel list -->
+        <Border Grid.Column="0" Background="#F0EEFF" BorderBrush="#C5C5FF" BorderThickness="1.5" CornerRadius="10" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Каналы" FontSize="16" FontWeight="Bold" Foreground="#444" Margin="0,0,0,10"/>
+
+                <ListBox Grid.Row="1" x:Name="ChannelListBox" Background="Transparent" BorderThickness="0"
+                         SelectionChanged="ChannelList_SelectionChanged"
+                         DisplayMemberPath="DisplayName">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="10,8"/>
+                            <Setter Property="FontSize" Value="13"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="6" Margin="0,1">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#C5C5FF"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#D5D0F0"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="+ Добавить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
+                            Click="AddChannel_Click" Margin="0,0,6,0"/>
+                    <Button Content="X Удалить" Style="{StaticResource ActionBtn}" Background="#E05050" Foreground="White"
+                            x:Name="BtnDeleteChannel" Click="DeleteChannel_Click" IsEnabled="False"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- RIGHT: Channel detail form -->
+        <Border Grid.Column="2" Background="#F0EEFF" BorderBrush="#C5C5FF" BorderThickness="1.5" CornerRadius="10" Padding="16">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="DetailPanel">
+                    <TextBlock Text="Настройки канала" FontSize="16" FontWeight="Bold" Foreground="#444" Margin="0,0,0,8"/>
+
+                    <!-- Basic info -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Основные"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Название"/>
+                        <TextBox x:Name="TbName" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Любое имя для идентификации канала"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Ссылка на канал"/>
+                        <TextBox x:Name="TbLink" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Формат: @channelname или https://t.me/channelname"/>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Режим постинга"/>
+                        <ComboBox x:Name="CbPublishMode" Grid.Column="1" Height="28" FontSize="13"
+                                  Background="White" BorderBrush="#B5B5D8">
+                            <ComboBoxItem Content="user" IsSelected="True"/>
+                            <ComboBoxItem Content="bot"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Активен"/>
+                        <CheckBox x:Name="CbIsActive" Grid.Column="1" VerticalAlignment="Center" IsChecked="True"/>
+                    </Grid>
+
+                    <!-- Credentials -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Учётные данные Telegram"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="API ID"/>
+                        <TextBox x:Name="TbApiId" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Для user-аккаунта (my.telegram.org)"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="API Hash"/>
+                        <TextBox x:Name="TbApiHash" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Для user-аккаунта (my.telegram.org)"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Bot Token"/>
+                        <TextBox x:Name="TbBotToken" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Только для режима 'bot' (@BotFather)"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Session file"/>
+                        <TextBox x:Name="TbSessionFile" Grid.Column="1" Style="{StaticResource FieldInput}" IsReadOnly="True"/>
+                        <Button Grid.Column="2" Content="..." Style="{StaticResource ActionBtn}"
+                                Background="#8E82E8" Foreground="White" Margin="6,0,0,0"
+                                Width="36" Click="BrowseSessionFile_Click"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Файл сессии Telethon (.session) для user-аккаунта"/>
+
+                    <!-- Schedule settings -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Расписание"/>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Часовой пояс"/>
+                        <TextBox x:Name="TbTimeZone" Grid.Column="1" Style="{StaticResource FieldInput}" Text="Europe/Moscow"/>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Задержка (сек)"/>
+                        <TextBox x:Name="TbDelay" Grid.Column="1" Style="{StaticResource FieldInput}" Text="5"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Задержка между публикациями, рекомендуется 5 сек"/>
+
+                    <!-- Paths -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Пути"/>
+
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Arts Root Path"/>
+                        <TextBox x:Name="TbArtsRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
+                                 ToolTip="Корневая папка с изображениями для канала"/>
+                        <Button Grid.Column="2" Content="..." Style="{StaticResource ActionBtn}"
+                                Background="#8E82E8" Foreground="White" Margin="6,0,0,0"
+                                Width="36" Click="BrowseArtsRoot_Click"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Корневая папка для хранения артов (New-Images, Check-Images, Post-Images)"/>
+
+                    <!-- New arts root path creation -->
+                    <Grid Margin="0,4,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Создать папку"/>
+                        <TextBox x:Name="TbArtsNewRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
+                                 ToolTip="Базовый путь, в котором будет создана папка {ChannelName}-Images"/>
+                        <Button Grid.Column="2" Content="Создать" Style="{StaticResource ActionBtn}"
+                                Background="#5CAA5C" Foreground="White" Margin="6,0,0,0"
+                                Click="CreateFolderStructure_Click"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource HintText}" Text="Создаёт {путь}/{Название}-Images с подпапками New-Images, Check-Images, Post-Images"/>
+
+                    <!-- Network -->
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="Сеть"/>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Network ID"/>
+                        <TextBox x:Name="TbNetworkId" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                    </Grid>
+
+                    <!-- Save button -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                        <Button Content="Сохранить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
+                                Click="SaveChannel_Click" Width="140"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

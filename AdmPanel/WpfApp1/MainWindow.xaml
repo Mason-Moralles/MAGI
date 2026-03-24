@@ -128,13 +128,21 @@
 
         <!-- ══════════ SIDEBAR ══════════ -->
         <Border Grid.Column="0" Background="{StaticResource BgSidebar}" Padding="0,20,0,0">
-            <StackPanel>
-                <!-- Logo -->
-                <TextBlock Text="MAGI" FontSize="24" FontWeight="Bold" Foreground="#555"
-                           HorizontalAlignment="Center" Margin="0,0,0,24"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0">
+                    <!-- Logo -->
+                    <TextBlock Text="MAGI" FontSize="24" FontWeight="Bold" Foreground="#555"
+                               HorizontalAlignment="Center" Margin="0,0,0,24"/>
+                </StackPanel>
 
                 <!-- Nav buttons -->
-                <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
+                <ListBox Grid.Row="1" x:Name="NavList" Background="Transparent" BorderThickness="0"
                          SelectionChanged="NavList_SelectionChanged">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
@@ -168,12 +176,53 @@
                     <ListBoxItem Content="📁  База артов"/>
                     <ListBoxItem Content="📅  Расписание"/>
                 </ListBox>
-            </StackPanel>
+
+                <!-- Bottom sidebar: Gateway status + Channel management -->
+                <StackPanel Grid.Row="2" Margin="10,8,10,16">
+                    <!-- Gateway status indicator -->
+                    <Border Background="#E0DCF4" CornerRadius="6" Padding="8,6" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="GatewayStatusDot" Width="8" Height="8" Fill="Red"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock x:Name="GatewayStatusText" Text="Gateway: Проверка..."
+                                       FontSize="11" Foreground="#555" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Channel management button -->
+                    <Button Content="📡 Каналы" Style="{StaticResource MagiBtn}"
+                            Click="ChannelManagement_Click" HorizontalAlignment="Stretch"
+                            Padding="8,6" FontSize="12"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ══════════ CONTENT AREA ══════════ -->
         <Border Grid.Column="1" Padding="20">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- ══════════ GLOBAL CHANNEL SELECTOR ══════════ -->
+                <Border Grid.Row="0" Background="#E8E4F8" CornerRadius="8" Padding="12,8" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Канал:" FontSize="13" FontWeight="SemiBold" Foreground="#555"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="ChannelSelector" Width="280" Height="30" FontSize="13"
+                                  DisplayMemberPath="Name" SelectedValuePath="Id"
+                                  SelectionChanged="ChannelSelector_SelectionChanged"/>
+                        <Button Content="Обновить" Style="{StaticResource MagiBtn}" Margin="10,0,0,0"
+                                Click="RefreshChannels_Click" Padding="10,4" FontSize="12"/>
+                        <TextBlock x:Name="ChannelInfoText" Text="" FontSize="11" Foreground="#888"
+                                   VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ═════ Pages container ═════ -->
+                <Grid Grid.Row="1">
+
                 <!-- PAGE 0: Микросервисы -->
                 <Grid x:Name="PageMicroservices" Visibility="Visible">
                     <Grid.RowDefinitions>
@@ -509,10 +558,8 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock x:Name="TbArtsTotal" Text="Всего: 0" FontSize="12" Foreground="#555" Margin="0,0,16,0"/>
                             <TextBlock x:Name="TbArtsNew" Text="Новых: 0" FontSize="12" Foreground="#555" Margin="0,0,16,0"/>
-                            <TextBlock x:Name="TbArtsPublished" Text="Опубликовано: 0" FontSize="12" Foreground="#555" Margin="0,0,24,0"/>
-                            <TextBlock Text="images.json (метаданные), posted-images.json (статус публикации)"
-                                       FontSize="11" Foreground="#AAA"/>
-                        </StackPanel>
+                                <TextBlock x:Name="TbArtsPublished" Text="Опубликовано: 0" FontSize="12" Foreground="#555" Margin="0,0,24,0"/>
+                            </StackPanel>
                     </Border>
                 </Grid>
 
@@ -536,13 +583,9 @@
                         <StackPanel Orientation="Horizontal">
                             <Button Content="+ Добавить пост" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="AddScheduleSlot_Click"/>
-                            <Button Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                <Button Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="SaveSchedule_Click"/>
-                            <Button Content="Импорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
-                                    Click="ImportScheduleJson_Click"/>
-                            <Button Content="Экспорт JSON" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
-                                    Click="ExportScheduleJson_Click"/>
-                        </StackPanel>
+                            </StackPanel>
                     </Border>
 
                     <!-- Main content: table + edit panel -->
@@ -699,18 +742,16 @@
                                          TextChanged="ScheduleDays_TextChanged"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="Применить правила к расписанию" Style="{StaticResource MagiBtn}"
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button Content="Применить правила к расписанию" Style="{StaticResource MagiBtn}"
                                         Padding="12,6" Margin="0,0,8,0" Click="ApplyRulesToSchedule_Click"/>
-                                <Button Content="Сохранить правила" Style="{StaticResource MagiBtn}"
+                                    <Button Content="Сохранить правила" Style="{StaticResource MagiBtn}"
                                         Padding="12,6" Click="SavePostingRules_Click"/>
+                                </StackPanel>
                             </StackPanel>
-
-                            <TextBlock Text="JSON reference: posting_rules.json (правила), schedule.json (конкретные слоты)"
-                                       FontSize="11" Foreground="#AAA" Margin="0,8,0,0"/>
-                        </StackPanel>
                     </Border>
                 </Grid>
+                </Grid> <!-- /Pages container -->
             </Grid>
         </Border>
     </Grid>

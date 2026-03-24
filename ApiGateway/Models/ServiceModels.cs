@@ -18,6 +18,23 @@ public class ServiceStatusDto
 public class ParserRunRequest
 {
     public List<string> Sources { get; set; } = new(); // "pinterest", "pixiv"
+    public string? ChannelId { get; set; }
+}
+
+/// <summary>
+/// Запрос на запуск теггера.
+/// </summary>
+public class TaggerRunRequest
+{
+    public string? ChannelId { get; set; }
+}
+
+/// <summary>
+/// Запрос на запуск паблишера.
+/// </summary>
+public class PublisherRunRequest
+{
+    public string? ChannelId { get; set; }
 }
 
 /// <summary>

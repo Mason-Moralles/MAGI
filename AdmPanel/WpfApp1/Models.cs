@@ -258,6 +258,17 @@ namespace MAGIAdmin
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
+    // ─── Channel selector item for global channel ComboBox ───
+    public class ChannelSelectorItem
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string ArtsRootPath { get; set; } = "";
+        public bool IsActive { get; set; } = true;
+
+        public override string ToString() => Name;
+    }
+
     // ─── Service status for microservice cards ───
     public class ServiceStatus : INotifyPropertyChanged
     {

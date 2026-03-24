@@ -1,5 +1,5 @@
 """
-Publisher Service — FastAPI-обёртка для Auto-post.
+Publisher Service v2.0 — FastAPI-обёртка для Auto-post.
 Порт: 5003
 
 Эндпоинты:
@@ -14,7 +14,7 @@ import sys
 import os
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Принудительно UTF-8 для Windows
 if sys.platform == "win32":
@@ -26,18 +26,16 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
+sys.path.insert(0, os.path.dirname(__file__))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Импортируем основную логику Auto-post
-# Используем относительный путь — service.py лежит рядом с Auto-post.py
-sys.path.insert(0, os.path.dirname(__file__))
-
 app = FastAPI(
     title="MAGI Publisher Service",
     description="Микросервис публикации контента в Telegram-каналы",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -49,6 +47,11 @@ app.add_middleware(
 
 
 # ─── Модели ───
+
+class RunRequest(BaseModel):
+    """Auto-post v3.0 сам читает каналы из Gateway. Дополнительных параметров не требуется."""
+    pass
+
 
 class TaskResult(BaseModel):
     task_id: str = ""
@@ -71,17 +74,16 @@ def _run_publisher_sync():
     global current_task
 
     try:
-        print("[Publisher Service] Starting Auto-post...", flush=True)
+        print("[Publisher Service] Starting Auto-post v3.0...", flush=True)
 
-        # Auto-post использует asyncio, запускаем в новом event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         try:
-            # Импорт внутри функции чтобы не было конфликта с event loop FastAPI
-            # Берём имя модуля с учётом дефиса в имени файла
             import importlib
             auto_post = importlib.import_module("Auto-post")
+            # Перезагружаем модуль чтобы не использовать кэшированный при повторном запуске
+            importlib.reload(auto_post)
             loop.run_until_complete(auto_post.run_post_flow())
         finally:
             loop.close()
@@ -89,15 +91,17 @@ def _run_publisher_sync():
         with _task_lock:
             current_task.status = "completed"
             current_task.message = "Publishing completed"
-            current_task.completed_at = datetime.utcnow().isoformat()
+            current_task.completed_at = datetime.now(UTC).isoformat()
         print("[Publisher Service] Publishing completed.", flush=True)
 
     except Exception as e:
         with _task_lock:
             current_task.status = "error"
             current_task.message = str(e)
-            current_task.completed_at = datetime.utcnow().isoformat()
+            current_task.completed_at = datetime.now(UTC).isoformat()
         print(f"[Publisher Service] Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 
 # ─── Эндпоинты ───
@@ -114,7 +118,7 @@ async def status():
 
 
 @app.post("/run")
-async def run():
+async def run(request: RunRequest | None = None):
     global current_task
 
     with _task_lock:
@@ -126,7 +130,7 @@ async def run():
             task_id=uuid.uuid4().hex[:8],
             status="running",
             message="Starting publisher...",
-            started_at=datetime.utcnow().isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
         )
 
     thread = threading.Thread(target=_run_publisher_sync, daemon=True)
@@ -144,7 +148,7 @@ async def stop():
         if current_task.status == "running":
             current_task.status = "completed"
             current_task.message = "Stopped by user"
-            current_task.completed_at = datetime.utcnow().isoformat()
+            current_task.completed_at = datetime.now(UTC).isoformat()
 
     return {"status": "stopped"}
 

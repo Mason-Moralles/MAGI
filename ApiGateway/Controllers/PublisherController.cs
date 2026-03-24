@@ -35,6 +35,7 @@ public class PublisherController : ControllerBase
 
     /// <summary>
     /// Запустить публикацию.
+    /// Auto-post v3.0 сам читает каналы из Gateway — channel_config не требуется.
     /// </summary>
     [HttpPost("run")]
     public async Task<ActionResult<ApiResponse<TaskResultDto>>> Run()
@@ -52,7 +53,7 @@ public class PublisherController : ControllerBase
     [HttpPost("stop")]
     public async Task<ActionResult<ApiResponse>> Stop()
     {
-        var stopped = await _orchestrator.StopServiceAsync("Publisher");
+        var stopped = await _orchestrator.StopServiceAsync("Publisher", killProcess: true);
         return stopped
             ? Ok(ApiResponse.Ok("Publisher stopped"))
             : StatusCode(503, ApiResponse.Error("Failed to stop publisher"));

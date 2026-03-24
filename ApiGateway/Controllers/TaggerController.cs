@@ -12,10 +12,12 @@ namespace MAGI.ApiGateway.Controllers;
 public class TaggerController : ControllerBase
 {
     private readonly ServiceOrchestrator _orchestrator;
+    private readonly ChannelService _channelService;
 
-    public TaggerController(ServiceOrchestrator orchestrator)
+    public TaggerController(ServiceOrchestrator orchestrator, ChannelService channelService)
     {
         _orchestrator = orchestrator;
+        _channelService = channelService;
     }
 
     /// <summary>
@@ -35,9 +37,28 @@ public class TaggerController : ControllerBase
     /// Запустить тегирование.
     /// </summary>
     [HttpPost("run")]
-    public async Task<ActionResult<ApiResponse<TaskResultDto>>> Run()
+    public async Task<ActionResult<ApiResponse<TaskResultDto>>> Run([FromBody] TaggerRunRequest? request)
     {
-        var result = await _orchestrator.RunServiceAsync("Tagger");
+        // Формируем channel_config для Python-сервиса
+        object? requestBody = null;
+
+        if (!string.IsNullOrEmpty(request?.ChannelId))
+        {
+            var channel = await _channelService.GetChannelAsync(request.ChannelId);
+            if (channel != null)
+            {
+                requestBody = new
+                {
+                    channel_config = new
+                    {
+                        channel_id = channel.Id,
+                        arts_root_path = channel.ArtsRootPath,
+                    }
+                };
+            }
+        }
+
+        var result = await _orchestrator.RunServiceAsync("Tagger", requestBody);
         if (result == null)
             return StatusCode(503, ApiResponse.Error("Tagger service is not available. Ensure it is running."));
 
@@ -50,7 +71,7 @@ public class TaggerController : ControllerBase
     [HttpPost("stop")]
     public async Task<ActionResult<ApiResponse>> Stop()
     {
-        var stopped = await _orchestrator.StopServiceAsync("Tagger");
+        var stopped = await _orchestrator.StopServiceAsync("Tagger", killProcess: true);
         return stopped
             ? Ok(ApiResponse.Ok("Tagger stopped"))
             : StatusCode(503, ApiResponse.Error("Failed to stop tagger"));

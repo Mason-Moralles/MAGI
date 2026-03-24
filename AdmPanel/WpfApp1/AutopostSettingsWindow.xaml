@@ -1,7 +1,7 @@
 <Window x:Class="MAGIAdmin.AutopostSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Настройки автопостинга" Height="340" Width="500"
+        Title="Настройки автопостинга" Height="405" Width="500"
         WindowStartupLocation="CenterOwner"
         Background="#E6E6FF"
         ResizeMode="NoResize">
@@ -94,9 +94,16 @@
 
         <TextBlock Grid.Row="7" Text="(если режим «Бот»)" FontSize="11" Foreground="Gray" Margin="150,0,0,4"/>
 
-        <TextBlock Grid.Row="8"
-                   Text="JSON reference: user_settings.json — секция &quot;telegram&quot;"
-                   FontSize="11" Foreground="Gray" VerticalAlignment="Bottom" Margin="0,8,0,8"/>
+        <StackPanel Grid.Row="8" VerticalAlignment="Bottom" Margin="0,8,0,8">
+            <TextBlock Text="Настройки привязаны к текущему выбранному каналу."
+                       FontSize="11" Foreground="Gray" Margin="0,0,0,4"/>
+            <TextBlock FontSize="11" Foreground="#7B6EE7" Margin="0,0,0,0">
+                <Run Text="Полное управление каналами: "/>
+                <Hyperlink Click="OpenChannelManagement_Click">
+                    <Run Text="Управление каналами"/>
+                </Hyperlink>
+            </TextBlock>
+        </StackPanel>
 
         <!-- Buttons -->
         <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right">

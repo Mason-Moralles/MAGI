@@ -7,30 +7,35 @@ Parser Service — FastAPI-обёртка для парсеров Pinterest и P
   GET  /status  — статус текущей задачи
   POST /run     — запуск парсинга (фоновая задача)
   POST /stop    — остановка парсинга
+
+Конфигурация парсеров загружается из API Gateway (SQLite) по channel_id.
+JSON-файлы больше НЕ используются.
 """
 
-import asyncio
 import sys
 import os
 import threading
 import uuid
 from datetime import datetime
-from contextlib import redirect_stdout, redirect_stderr
-from io import StringIO
+from pathlib import Path
 
 # Принудительно UTF-8 для Windows
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+# Gateway client
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config.gateway_client import GatewayClient
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 app = FastAPI(
     title="MAGI Parser Service",
-    description="Микросервис парсинга изображений с Pinterest и Pixiv",
-    version="1.0.0",
+    description="Микросервис парсинга изображений с Pinterest и Pixiv (Gateway API mode)",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -44,7 +49,11 @@ app.add_middleware(
 # ─── Модели ───
 
 class RunRequest(BaseModel):
-    sources: list[str] = ["pinterest", "pixiv"]
+    model_config = {"populate_by_name": True}
+
+    sources: list[str] = ["pinterest"]
+    channel_id: str | None = Field(None, alias="channelId")
+
 
 class TaskResult(BaseModel):
     task_id: str = ""
@@ -52,7 +61,6 @@ class TaskResult(BaseModel):
     message: str | None = None
     started_at: str | None = None
     completed_at: str | None = None
-    logs: str = ""
 
 
 # ─── Состояние задачи ───
@@ -62,19 +70,20 @@ _stop_event = threading.Event()
 _task_lock = threading.Lock()
 
 
-def _run_parser_sync(sources: list[str]):
+def _run_parser_sync(sources: list[str], channel_id: str):
     """Запускает парсеры синхронно в отдельном потоке."""
     global current_task
-    log_buffer = StringIO()
+
+    gw = GatewayClient()
 
     try:
         if "pinterest" in sources:
             with _task_lock:
                 current_task.message = "Running Pinterest parser..."
-            print("[Parser Service] Starting Pinterest parser...", flush=True)
+            print(f"[Parser Service] Starting Pinterest parser for channel {channel_id}...", flush=True)
             try:
                 from PinterestParser import main as pinterest_main
-                pinterest_main()
+                pinterest_main(channel_id=channel_id, gw=gw)
             except SystemExit:
                 pass
             except Exception as e:
@@ -90,10 +99,10 @@ def _run_parser_sync(sources: list[str]):
         if "pixiv" in sources:
             with _task_lock:
                 current_task.message = "Running Pixiv parser..."
-            print("[Parser Service] Starting Pixiv parser...", flush=True)
+            print(f"[Parser Service] Starting Pixiv parser for channel {channel_id}...", flush=True)
             try:
                 from PixivParser import main as pixiv_main
-                pixiv_main()
+                pixiv_main(channel_id=channel_id, gw=gw)
             except SystemExit:
                 pass
             except Exception as e:
@@ -129,7 +138,11 @@ async def status():
 @app.post("/run")
 async def run(request: RunRequest | None = None):
     global current_task
-    sources = request.sources if request else ["pinterest", "pixiv"]
+    sources = request.sources if request else ["pinterest"]
+    channel_id = request.channel_id if request else None
+
+    if not channel_id:
+        return {"error": "channel_id is required"}
 
     with _task_lock:
         if current_task.status == "running":
@@ -139,11 +152,11 @@ async def run(request: RunRequest | None = None):
         current_task = TaskResult(
             task_id=uuid.uuid4().hex[:8],
             status="running",
-            message=f"Starting parsers: {', '.join(sources)}",
+            message=f"Starting parsers: {', '.join(sources)} for channel {channel_id}",
             started_at=datetime.utcnow().isoformat(),
         )
 
-    thread = threading.Thread(target=_run_parser_sync, args=(sources,), daemon=True)
+    thread = threading.Thread(target=_run_parser_sync, args=(sources, channel_id), daemon=True)
     thread.start()
 
     return current_task.model_dump()

@@ -32,3 +32,8 @@ D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\refint\MAGIAdmin.dll
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\MAGIAdmin.pdb
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\WpfApp1.genruntimeconfig.cache
 D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\ref\MAGIAdmin.dll
+D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\ChannelManagementWindow.baml
+D:\MAGI\AdmPanel\WpfApp1\obj\Debug\net8.0-windows\ChannelManagementWindow.g.cs
+D:\MAGI\AdmPanel\WpfApp1\bin\Debug\net8.0-windows\System.Configuration.ConfigurationManager.dll
+D:\MAGI\AdmPanel\WpfApp1\bin\Debug\net8.0-windows\System.Diagnostics.EventLog.dll
+D:\MAGI\AdmPanel\WpfApp1\bin\Debug\net8.0-windows\runtimes\win\lib\net8.0\System.Diagnostics.EventLog.dll

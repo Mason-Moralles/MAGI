@@ -1,49 +1,30 @@
 """
-Pixiv Арт Парсер v1.0 (Python)
+Pixiv Арт Парсер v2.0 (Python)
 Скачивает изображения по хэштегам из Pixiv через Selenium.
 Поддержка блеклиста тегов (напр. #AIGenerated).
+Конфигурация и база скачиваний — через API Gateway (SQLite).
 """
 
-import json
 import os
 import re
 import sys
 import time
 import urllib.parse
-from datetime import datetime
 from pathlib import Path
 
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
     NoSuchElementException,
     WebDriverException,
-    TimeoutException,
     StaleElementReferenceException,
 )
 
-
-# ════════════════════════════════════════
-#  Пути
-# ════════════════════════════════════════
-
-def get_project_root() -> Path:
-    """Определяет корень проекта (папка, содержащая Parser/)."""
-    return Path(__file__).resolve().parent.parent
-
-
-def get_config_path() -> Path:
-    return get_project_root() / "data" / "json" / "parser" / "config.json"
-
-
-def get_database_path() -> Path:
-    return get_project_root() / "data" / "json" / "parser" / "Pixiv_downloaded_images.json"
+# Gateway client
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from config.gateway_client import GatewayClient
 
 
 # ════════════════════════════════════════
@@ -51,13 +32,13 @@ def get_database_path() -> Path:
 # ════════════════════════════════════════
 
 class Colors:
-    RESET  = "\033[0m"
-    RED    = "\033[91m"
-    GREEN  = "\033[92m"
-    YELLOW = "\033[93m"
-    CYAN   = "\033[96m"
-    GRAY   = "\033[90m"
-    WHITE  = "\033[97m"
+    RESET   = "\033[0m"
+    RED     = "\033[91m"
+    GREEN   = "\033[92m"
+    YELLOW  = "\033[93m"
+    CYAN    = "\033[96m"
+    GRAY    = "\033[90m"
+    WHITE   = "\033[97m"
     MAGENTA = "\033[95m"
 
 
@@ -72,31 +53,40 @@ def log(msg: str, color: str = Colors.WHITE):
 
 
 # ════════════════════════════════════════
-#  Конфигурация
+#  Конфигурация (из Gateway)
 # ════════════════════════════════════════
 
 class Config:
-    def __init__(self, data: dict):
-        self.hashtags: list[str] = data.get("hashtags", [])
-        self.negative_hashtags: list[str] = data.get("negativeHashtags", [])
-        self.images_per_hashtag: int = data.get("imagesPerHashtag", 50)
-        self.download_path: str = data.get("downloadPath", "")
-        self.scroll_delay_ms: int = data.get("scrollDelayMs", 2000)
-        self.image_load_delay_ms: int = data.get("imageLoadDelayMs", 1000)
+    def __init__(self, channel_id: str, gw: GatewayClient):
+        self.channel_id = channel_id
+
+        # Получаем данные канала
+        channel = gw.get_channel(channel_id)
+        if not channel:
+            raise ValueError(f"Канал {channel_id} не найден в Gateway")
+
+        # Получаем конфиг парсера
+        parser_cfg = gw.get_parser_config(channel_id)
+        if not parser_cfg:
+            raise ValueError(f"Конфиг парсера для канала {channel_id} не найден")
+
+        self.hashtags: list[str] = parser_cfg.get("hashtags", [])
+        self.negative_hashtags: list[str] = parser_cfg.get("negativeHashtags", [])
+        self.images_per_hashtag: int = parser_cfg.get("imagesPerHashtag", 50)
+        self.scroll_delay_ms: int = parser_cfg.get("scrollDelayMs", 2000)
+        self.image_load_delay_ms: int = parser_cfg.get("imageLoadDelayMs", 1000)
+
+        # Путь для скачивания = ArtsRootPath / New-Images
+        arts_root = channel.get("artsRootPath", "")
+        if not arts_root:
+            raise ValueError(f"ArtsRootPath не задан для канала {channel_id}")
+        self.download_path: str = os.path.join(arts_root, "New-Images")
 
 
-def load_config() -> Config:
-    log("Загрузка конфигурации...", Colors.CYAN)
-    path = get_config_path()
-
-    if not path.exists():
-        raise FileNotFoundError(f"Файл конфигурации не найден: {path}")
-
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    cfg = Config(data)
-    log("✓ Конфигурация загружена", Colors.GREEN)
+def load_config(channel_id: str, gw: GatewayClient) -> Config:
+    log("Загрузка конфигурации из Gateway...", Colors.CYAN)
+    cfg = Config(channel_id, gw)
+    log("✓ Конфигурация загружена из Gateway", Colors.GREEN)
     return cfg
 
 
@@ -111,53 +101,44 @@ def validate_config(cfg: Config):
 
 
 # ════════════════════════════════════════
-#  База данных скачанных изображений
+#  База данных скачанных изображений (Gateway API)
 # ════════════════════════════════════════
 
 class DownloadDatabase:
-    def __init__(self, path: Path):
-        self._path = path
-        self._records: list[dict] = []
-        self._downloaded_urls: set[str] = set()
+    """Обёртка над Gateway API для проверки и добавления скачанных записей."""
+
+    def __init__(self, gw: GatewayClient, channel_id: str):
+        self._gw = gw
+        self._channel_id = channel_id
+        self._count = 0
+        self._session_urls: set[str] = set()
 
     @property
     def count(self) -> int:
-        return len(self._records)
+        return self._count
 
     def load(self):
-        if not self._path.exists():
-            return
-        try:
-            with open(self._path, "r", encoding="utf-8") as f:
-                records = json.load(f)
-            if isinstance(records, list):
-                self._records = records
-                for r in records:
-                    url = r.get("artworkUrl", "")
-                    if url:
-                        self._downloaded_urls.add(url)
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    def save(self):
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._path, "w", encoding="utf-8") as f:
-            json.dump(self._records, f, indent=2, ensure_ascii=False)
+        """Загружает счётчик из Gateway."""
+        self._count = self._gw.get_download_count(source="pixiv")
 
     def is_downloaded(self, artwork_url: str) -> bool:
-        return artwork_url in self._downloaded_urls
+        if artwork_url in self._session_urls:
+            return True
+        return self._gw.is_downloaded(artwork_url)
 
     def add(self, artwork_url: str, image_url: str, file_name: str, hashtag: str):
-        if artwork_url in self._downloaded_urls:
+        if artwork_url in self._session_urls:
             return
-        self._records.append({
-            "artworkUrl": artwork_url,
-            "imageUrl": image_url,
-            "fileName": file_name,
-            "hashtag": hashtag,
-            "downloadedAt": datetime.now().isoformat(),
-        })
-        self._downloaded_urls.add(artwork_url)
+        self._gw.add_download_record(
+            source="pixiv",
+            source_url=artwork_url,
+            image_url=image_url,
+            file_name=file_name,
+            hashtag=hashtag,
+            channel_id=self._channel_id,
+        )
+        self._session_urls.add(artwork_url)
+        self._count += 1
 
 
 # ════════════════════════════════════════
@@ -188,14 +169,12 @@ def init_chrome() -> webdriver.Chrome:
     if chrome_bin:
         opts.binary_location = chrome_bin
 
-    # Профиль парсера (отдельный для Pixiv, чтобы сохранять логин)
     profile_dir = os.path.join(
         os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
         "PixivParserProfile",
     )
     os.makedirs(profile_dir, exist_ok=True)
 
-    # Удаляем lock-файл если есть
     lock_file = os.path.join(profile_dir, "SingletonLock")
     if os.path.exists(lock_file):
         try:
@@ -211,7 +190,7 @@ def init_chrome() -> webdriver.Chrome:
     opts.add_argument("--disable-notifications")
     opts.add_argument("--disable-blink-features=AutomationControlled")
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-    opts.add_argument("--remote-debugging-port=9223")  # отдельный порт от Pinterest
+    opts.add_argument("--remote-debugging-port=9223")
 
     try:
         driver = webdriver.Chrome(options=opts)
@@ -232,7 +211,6 @@ def init_chrome() -> webdriver.Chrome:
         driver = webdriver.Chrome(options=simple_opts)
         driver.implicitly_wait(10)
         log("✓ Chrome запущен (без сохранения сессии)", Colors.GREEN)
-        log("  ⚠ Придётся авторизовываться каждый раз", Colors.YELLOW)
         return driver
 
 
@@ -247,7 +225,6 @@ def ensure_pixiv_login(driver: webdriver.Chrome):
     time.sleep(4)
 
     url = driver.current_url.lower()
-    # Проверяем есть ли кнопка логина или нас перенаправило на страницу входа
     if "/login" in url or "/accounts/login" in url:
         log("\n═══════════════════════════════════════", Colors.YELLOW)
         log("  ТРЕБУЕТСЯ АВТОРИЗАЦИЯ НА PIXIV", Colors.YELLOW)
@@ -255,12 +232,10 @@ def ensure_pixiv_login(driver: webdriver.Chrome):
         log("Войдите в Pixiv в браузере, затем нажмите Enter...\n", Colors.CYAN)
         input()
     else:
-        # Дополнительная проверка — ищем элемент аватара залогиненного пользователя
         try:
             driver.find_element(By.CSS_SELECTOR, "a[data-gtm-value='header-click-avatar']")
             log("✓ Авторизация подтверждена", Colors.GREEN)
         except NoSuchElementException:
-            # Может быть залогинен, но аватар не найден по этому селектору — проверяем по другим признакам
             try:
                 driver.find_element(By.CSS_SELECTOR, "button[data-click-label='header-login']")
                 log("\n═══════════════════════════════════════", Colors.YELLOW)
@@ -292,22 +267,17 @@ def check_artwork_tags(driver: webdriver.Chrome, negative_tags: list[str]) -> bo
     """
     Проверяет теги арта на странице.
     Возвращает True если арт проходит фильтр (нет негативных тегов).
-    Возвращает False если найден негативный тег.
     """
     if not negative_tags:
         return True
 
-    # Нормализуем негативные теги для сравнения
     neg_tags_lower = [t.strip().lower().replace("#", "") for t in negative_tags]
 
     try:
-        # Основной селектор по структуре: figcaption > ul > li > span > a
         tag_elements = driver.find_elements(By.CSS_SELECTOR, "figcaption ul li span a")
         if not tag_elements:
-            # Запасной: любой li внутри footer с ссылкой
             tag_elements = driver.find_elements(By.CSS_SELECTOR, "footer ul li a")
         if not tag_elements:
-            # GTM-класс как последний вариант
             tag_elements = driver.find_elements(
                 By.CSS_SELECTOR, "span.gtm-new-work-tag-event-click"
             )
@@ -327,17 +297,11 @@ def check_artwork_tags(driver: webdriver.Chrome, negative_tags: list[str]) -> bo
 
 
 def get_artwork_image_url(driver: webdriver.Chrome) -> str | None:
-    """
-    Извлекает URL оригинального изображения со страницы арта Pixiv.
-    """
+    """Извлекает URL оригинального изображения со страницы арта Pixiv."""
     selectors = [
-        # Основное изображение на странице арта (кликабельный контейнер)
         "div[role='presentation'] a[href*='img-original'] img",
-        # Изображение в просмотре
         "figure img[src*='i.pximg.net']",
-        # Основной img на странице арта
         "div[role='presentation'] img",
-        # Общий контейнер арта
         "main section figure img",
         "canvas + div img",
     ]
@@ -352,7 +316,6 @@ def get_artwork_image_url(driver: webdriver.Chrome) -> str | None:
         except NoSuchElementException:
             continue
 
-    # Попробуем найти ссылку на оригинал через контейнер
     try:
         links = driver.find_elements(By.CSS_SELECTOR, "a[href*='img-original']")
         if links:
@@ -360,13 +323,11 @@ def get_artwork_image_url(driver: webdriver.Chrome) -> str | None:
     except Exception:
         pass
 
-    # Попробуем найти любое изображение с pximg.net
     try:
         all_imgs = driver.find_elements(By.TAG_NAME, "img")
         for img in all_imgs:
             src = img.get_attribute("src") or ""
             if "i.pximg.net" in src and "/img/" in src:
-                # Пропускаем аватары и мелкие превью
                 if "/user-profile/" in src or "50x50" in src or "48x48" in src:
                     continue
                 return src
@@ -377,30 +338,19 @@ def get_artwork_image_url(driver: webdriver.Chrome) -> str | None:
 
 
 def convert_to_original_url(url: str) -> str:
-    """
-    Преобразует URL превью Pixiv в URL оригинального изображения.
-    Pixiv форматы URL:
-    - /img-master/img/... → /img-original/img/...
-    - _master1200 → убираем суффикс
-    - /c/600x1200_90_webp/ → убираем ограничение
-    """
+    """Преобразует URL превью Pixiv в URL оригинального изображения."""
     if not url:
         return url
 
-    # Замена master на original
     original = url
     if "/img-master/" in original:
         original = original.replace("/img-master/", "/img-original/")
     if "/c/" in original and "/img/" in original:
-        # Убираем ограничение размера /c/600x1200_90_webp/
         original = re.sub(r"/c/[^/]+/", "/", original)
 
-    # Убираем суффикс _master1200
     original = re.sub(r"_master\d+", "", original)
-    # Убираем _square1200
     original = re.sub(r"_square\d+", "", original)
 
-    # Расширение — пробуем jpg, png
     if original.endswith(".webp"):
         original = original[:-5] + ".jpg"
 
@@ -408,22 +358,18 @@ def convert_to_original_url(url: str) -> str:
 
 
 def download_pixiv_image(url: str, path: str, referer: str = "https://www.pixiv.net/"):
-    """
-    Скачивает изображение с Pixiv (требуется Referer header).
-    """
+    """Скачивает изображение с Pixiv (требуется Referer header)."""
     headers = {
         "Referer": referer,
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     }
 
-    # Попробуем скачать как оригинал (jpg), потом png, потом как есть
     original_url = convert_to_original_url(url)
 
     urls_to_try = [original_url]
     if original_url != url:
         urls_to_try.append(url)
-    # Попробуем и png вариант
     if original_url.endswith(".jpg"):
         urls_to_try.insert(1, original_url[:-4] + ".png")
 
@@ -431,7 +377,6 @@ def download_pixiv_image(url: str, path: str, referer: str = "https://www.pixiv.
         try:
             resp = requests.get(try_url, headers=headers, timeout=30)
             if resp.status_code == 200 and len(resp.content) > 1000:
-                # Определяем реальное расширение по Content-Type
                 ct = resp.headers.get("Content-Type", "")
                 ext = ".jpg"
                 if "png" in ct:
@@ -441,7 +386,6 @@ def download_pixiv_image(url: str, path: str, referer: str = "https://www.pixiv.
                 elif "gif" in ct:
                     ext = ".gif"
 
-                # Поправляем расширение в пути если нужно
                 if not path.endswith(ext):
                     path = os.path.splitext(path)[0] + ext
 
@@ -461,7 +405,6 @@ def process_hashtag(
     db: DownloadDatabase,
 ) -> int:
     """Обрабатывает один хэштег: ищет, фильтрует, скачивает."""
-    # Pixiv поиск по тегам — URL формат
     encoded = urllib.parse.quote(hashtag)
     search_url = f"https://www.pixiv.net/en/tags/{encoded}/artworks?s_mode=s_tag"
 
@@ -475,7 +418,6 @@ def process_hashtag(
     session_for_tag = 0
 
     while downloaded < cfg.images_per_hashtag and scroll_attempts < 50:
-        # Ищем ссылки на арты
         artwork_links = driver.find_elements(By.CSS_SELECTOR, "a[href*='/artworks/']")
 
         if not artwork_links:
@@ -496,7 +438,6 @@ def process_hashtag(
             except StaleElementReferenceException:
                 continue
 
-            # Извлекаем artwork ID
             match = re.search(r"/artworks/(\d+)", href)
             if not match:
                 continue
@@ -510,7 +451,7 @@ def process_hashtag(
             processed_artwork_ids.add(artwork_id)
             found_new = True
 
-            # Проверяем — уже скачан?
+            # Проверяем — уже скачан? (через Gateway API)
             if db.is_downloaded(artwork_url):
                 log(f"  ⤷ Арт {artwork_id} уже скачан, пропускаю", Colors.GRAY)
                 continue
@@ -585,7 +526,6 @@ def process_hashtag(
                 log(f"\n  ⚠ Больше нет новых артов", Colors.YELLOW)
                 break
 
-        # Прокрутка
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(cfg.scroll_delay_ms / 1000)
 
@@ -598,25 +538,32 @@ def process_hashtag(
 #  Main
 # ════════════════════════════════════════
 
-def main():
+def main(channel_id: str | None = None, gw: GatewayClient | None = None):
     # Принудительно UTF-8 для Windows
     if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     print("═══════════════════════════════════════")
-    print("    Pixiv Арт Парсер v1.0")
+    print("    Pixiv Арт Парсер v2.0")
+    print("    (Gateway API mode)")
     print("═══════════════════════════════════════\n")
 
+    if not channel_id:
+        raise ValueError("channel_id обязателен. Передайте через service.py или аргумент.")
+
+    if gw is None:
+        gw = GatewayClient()
+
     try:
-        cfg = load_config()
+        cfg = load_config(channel_id, gw)
         validate_config(cfg)
 
-        db = DownloadDatabase(get_database_path())
+        db = DownloadDatabase(gw, channel_id)
         db.load()
-        log(f"База данных: {get_database_path()}", Colors.CYAN)
+        log(f"База данных: Gateway API (SQLite)", Colors.CYAN)
         if db.count > 0:
-            log(f"  Уже скачано ранее: {db.count} изображений", Colors.GRAY)
+            log(f"  Уже скачано ранее: {db.count} изображений (pixiv)", Colors.GRAY)
 
         os.makedirs(cfg.download_path, exist_ok=True)
 
@@ -629,7 +576,6 @@ def main():
                 log(f"\n▶ Обработка хэштега: #{hashtag}", Colors.YELLOW)
                 session_total += process_hashtag(driver, hashtag, cfg, db)
 
-            db.save()
             log(
                 f"\n✓ Готово! Скачано в этой сессии: {session_total} | Всего в базе: {db.count}",
                 Colors.GREEN,
@@ -639,8 +585,9 @@ def main():
 
     except Exception as exc:
         log(f"\n✗ Ошибка: {exc}", Colors.RED)
-        sys.exit(1)
+        raise
 
 
 if __name__ == "__main__":
-    main()
+    _ch_id = sys.argv[1] if len(sys.argv) > 1 else None
+    main(channel_id=_ch_id)

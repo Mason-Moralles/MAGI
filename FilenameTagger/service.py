@@ -13,7 +13,7 @@ import sys
 import os
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 # Принудительно UTF-8 для Windows
 if sys.platform == "win32":
@@ -32,7 +32,7 @@ from pydantic import BaseModel
 app = FastAPI(
     title="MAGI Tagger Service",
     description="Микросервис тегирования изображений по именам файлов",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -44,6 +44,20 @@ app.add_middleware(
 
 
 # ─── Модели ───
+
+class ChannelConfig(BaseModel):
+    """Per-channel конфигурация теггера, передаётся Gateway при запуске."""
+    channel_id: str | None = None
+    rename_template: str = "{artist}_{title}_{id}"
+    separator: str = "_"
+    only_new: bool = True
+    mode: str = "rename"
+    arts_root_path: str | None = None
+
+
+class RunRequest(BaseModel):
+    channel_config: ChannelConfig | None = None
+
 
 class TaskResult(BaseModel):
     task_id: str = ""
@@ -60,28 +74,39 @@ current_task = TaskResult()
 _task_lock = threading.Lock()
 
 
-def _run_tagger_sync():
+def _run_tagger_sync(channel_config: dict | None = None):
     """Запускает FilenameTagger синхронно в отдельном потоке."""
     global current_task
 
     try:
+        channel_id = None
+        arts_root_path = None
+
+        if channel_config:
+            channel_id = channel_config.get("channel_id")
+            arts_root_path = channel_config.get("arts_root_path")
+            print(f"[Tagger Service] Channel config applied: {channel_id}", flush=True)
+
         print("[Tagger Service] Starting FilenameTagger...", flush=True)
 
         from FilenameTagger import main as tagger_main
-        tagger_main()
+        count = tagger_main(channel_id=channel_id, arts_root_path=arts_root_path)
 
         with _task_lock:
             current_task.status = "completed"
-            current_task.message = "Tagging completed"
-            current_task.completed_at = datetime.utcnow().isoformat()
-        print("[Tagger Service] Tagging completed.", flush=True)
+            current_task.message = f"Tagging completed: {count or 0} files"
+            current_task.files_processed = count or 0
+            current_task.completed_at = datetime.now(UTC).isoformat()
+        print(f"[Tagger Service] Tagging completed. Files processed: {count or 0}", flush=True)
 
     except Exception as e:
         with _task_lock:
             current_task.status = "error"
             current_task.message = str(e)
-            current_task.completed_at = datetime.utcnow().isoformat()
+            current_task.completed_at = datetime.now(UTC).isoformat()
         print(f"[Tagger Service] Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
 
 
 # ─── Эндпоинты ───
@@ -98,8 +123,9 @@ async def status():
 
 
 @app.post("/run")
-async def run():
+async def run(request: RunRequest | None = None):
     global current_task
+    ch_config = request.channel_config.model_dump() if request and request.channel_config else None
 
     with _task_lock:
         if current_task.status == "running":
@@ -109,10 +135,10 @@ async def run():
             task_id=uuid.uuid4().hex[:8],
             status="running",
             message="Starting tagger...",
-            started_at=datetime.utcnow().isoformat(),
+            started_at=datetime.now(UTC).isoformat(),
         )
 
-    thread = threading.Thread(target=_run_tagger_sync, daemon=True)
+    thread = threading.Thread(target=_run_tagger_sync, args=(ch_config,), daemon=True)
     thread.start()
 
     return current_task.model_dump()
@@ -127,7 +153,7 @@ async def stop():
         if current_task.status == "running":
             current_task.status = "completed"
             current_task.message = "Stopped by user"
-            current_task.completed_at = datetime.utcnow().isoformat()
+            current_task.completed_at = datetime.now(UTC).isoformat()
 
     return {"status": "stopped"}
 

@@ -31,6 +31,7 @@ builder.Services.AddDbContext<MagiDbContext>(options =>
 builder.Services.AddHttpClient<PythonServiceClient>();
 
 // Бизнес-сервисы
+builder.Services.AddSingleton<ProcessManager>();
 builder.Services.AddSingleton<ServiceOrchestrator>();
 builder.Services.AddScoped<DataService>();
 builder.Services.AddScoped<ChannelService>();
@@ -61,6 +62,20 @@ using (var scope = app.Services.CreateScope())
 // ─── Middleware ───
 
 app.UseCors();
+
+// Global exception handler — всегда возвращаем JSON, даже при необработанных ошибках
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        var error = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var message = error?.Error?.Message ?? "Internal server error";
+        var json = System.Text.Json.JsonSerializer.Serialize(new { success = false, message });
+        await context.Response.WriteAsync(json);
+    });
+});
 
 // Swagger доступен всегда (не только в Development)
 app.UseSwagger();

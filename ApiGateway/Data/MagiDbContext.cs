@@ -16,6 +16,9 @@ public class MagiDbContext : DbContext
     public DbSet<ChannelNetworkEntity> ChannelNetworks => Set<ChannelNetworkEntity>();
     public DbSet<PostingRuleEntity> PostingRules => Set<PostingRuleEntity>();
     public DbSet<DownloadRecordEntity> DownloadRecords => Set<DownloadRecordEntity>();
+    public DbSet<ChannelParserConfigEntity> ChannelParserConfigs => Set<ChannelParserConfigEntity>();
+    public DbSet<ChannelTaggerConfigEntity> ChannelTaggerConfigs => Set<ChannelTaggerConfigEntity>();
+    public DbSet<FilenameTagEntity> FilenameTags => Set<FilenameTagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +48,20 @@ public class MagiDbContext : DbContext
 
         // PostingRules: индекс по ChannelId
         modelBuilder.Entity<PostingRuleEntity>()
+            .HasIndex(e => e.ChannelId);
+
+        // ChannelParserConfigs: уникальный ChannelId (1:1)
+        modelBuilder.Entity<ChannelParserConfigEntity>()
+            .HasIndex(e => e.ChannelId)
+            .IsUnique();
+
+        // ChannelTaggerConfigs: уникальный ChannelId (1:1)
+        modelBuilder.Entity<ChannelTaggerConfigEntity>()
+            .HasIndex(e => e.ChannelId)
+            .IsUnique();
+
+        // FilenameTags: индекс по ChannelId (1:many)
+        modelBuilder.Entity<FilenameTagEntity>()
             .HasIndex(e => e.ChannelId);
     }
 }

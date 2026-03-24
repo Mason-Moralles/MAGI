@@ -50,7 +50,7 @@ public class ParserController : ControllerBase
     [HttpPost("stop")]
     public async Task<ActionResult<ApiResponse>> Stop()
     {
-        var stopped = await _orchestrator.StopServiceAsync("Parser");
+        var stopped = await _orchestrator.StopServiceAsync("Parser", killProcess: true);
         return stopped
             ? Ok(ApiResponse.Ok("Parser stopped"))
             : StatusCode(503, ApiResponse.Error("Failed to stop parser"));

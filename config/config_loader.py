@@ -121,7 +121,9 @@ def load_effective_config(
     defaults = _load_json(defaults_path, {})
 
     # arts_root обязателен для Auto-post (где лежат папки check/new/post)
-    arts_root_value = (user.get("paths") or {}).get("arts_root") or ""
+    # Приоритет: env MAGI_ARTS_ROOT > user_settings.json > fallback (project/arts)
+    arts_root_env = os.getenv("MAGI_ARTS_ROOT", "").strip()
+    arts_root_value = arts_root_env or (user.get("paths") or {}).get("arts_root") or ""
     arts_root = _as_path(arts_root_value).resolve() if arts_root_value.strip() else (project_root / "arts").resolve()
 
     # defaults paths -> папки внутри arts_root
@@ -197,14 +199,26 @@ def load_effective_config(
     forced_posts = rules.get("forced_posts") or []
     forced_captions = rules.get("forced_captions") or []
 
-    # БАЗОВАЯ ВАЛИДАЦИЯ (жёстко нужно для Auto-post)
-    _require(channel_link != "", "user_settings.json: telegram.channel_link пустой")
-    _require(api_id is not None and api_hash is not None, "user_settings.json: telegram.api_id/api_hash должны быть заполнены")
-    if telegram_mode == "bot":
-        _require(bot_token is not None, "user_settings.json: telegram.bot_token пустой (режим bot)")
+    # БАЗОВАЯ ВАЛИДАЦИЯ
+    # В мультиканальном режиме (Gateway) credentials берутся из БД, а не из JSON.
+    # Строгая валидация только если Gateway недоступен (JSON fallback).
+    gateway_available = False
+    try:
+        from config.gateway_client import GatewayClient
+        gateway_available = GatewayClient().is_gateway_available()
+    except Exception:
+        pass
 
-    _require(arts_root.exists(), f"arts_root не найден: {arts_root}")
-    _require(check_dir.exists(), f"Папка check-images не найдена: {check_dir}")
+    if not gateway_available:
+        # JSON fallback — credentials обязательны в user_settings.json
+        _require(channel_link != "", "user_settings.json: telegram.channel_link пустой")
+        _require(api_id is not None and api_hash is not None, "user_settings.json: telegram.api_id/api_hash должны быть заполнены")
+        if telegram_mode == "bot":
+            _require(bot_token is not None, "user_settings.json: telegram.bot_token пустой (режим bot)")
+
+    # Пути — мягкая проверка, папки могут не существовать если arts_root из канала
+    if arts_root.exists() and not check_dir.exists():
+        check_dir.mkdir(parents=True, exist_ok=True)
     # new_dir/post_dir могут создаваться по ходу — не заставляем существовать
 
     return EffectiveConfig(

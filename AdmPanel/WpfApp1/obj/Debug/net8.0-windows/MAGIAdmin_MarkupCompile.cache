@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 D:\MAGI\AdmPanel\WpfApp1\App.xaml
-4584860237
+5-1496210959
 
-9-314320637
+17713153753
 2081937164171
-AutopostSettingsWindow.xaml;MainWindow.xaml;ParserSettingsWindow.xaml;TaggerSettingsWindow.xaml;
+AutopostSettingsWindow.xaml;ChannelManagementWindow.xaml;MainWindow.xaml;ParserSettingsWindow.xaml;TaggerSettingsWindow.xaml;
 
 False
 
