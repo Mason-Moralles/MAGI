@@ -127,16 +127,16 @@ namespace MAGIAdmin.Services
             }
         }
 
-        public async Task<bool> UpdateSlotAsync(string isoKey, string date, string time, string caption = "")
+        public async Task<bool> UpdateSlotAsync(string isoKey, string date, string time, string caption = "", string channelId = null)
         {
-            var body = new { isoKey, date, time, caption };
+            var body = new { isoKey, date, time, caption, channelId };
             var resp = await _http.PutAsJsonAsync("/api/schedule/update", body);
             return resp.IsSuccessStatusCode;
         }
 
-        public async Task<bool> DeleteSlotAsync(string isoKey)
+        public async Task<bool> DeleteSlotAsync(string isoKey, string channelId = null)
         {
-            var resp = await _http.PostAsJsonAsync("/api/schedule/delete", new { isoKey });
+            var resp = await _http.PostAsJsonAsync("/api/schedule/delete", new { isoKey, channelId });
             return resp.IsSuccessStatusCode;
         }
 

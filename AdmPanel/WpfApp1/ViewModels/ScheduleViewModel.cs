@@ -201,7 +201,7 @@ namespace MAGIAdmin.ViewModels
 
             if (result != MessageBoxResult.Yes) return;
 
-            var ok = await _api.DeleteSlotAsync(SelectedSlot.IsoKey);
+            var ok = await _api.DeleteSlotAsync(SelectedSlot.IsoKey, _channelId);
             if (ok)
             {
                 AllSlots.Remove(SelectedSlot);

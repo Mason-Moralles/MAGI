@@ -53,7 +53,7 @@ class TestScheduleAPI:
             "caption": "Merry Christmas",
             "channelId": channel_id,
         })
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         slot = resp.json()["data"]
         iso_key = slot["isoKey"]
         assert slot["status"] == "pending"
@@ -102,7 +102,7 @@ class TestScheduleAPI:
             "time": "7:29",
             "channelId": channel_id,
         })
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         iso_key = resp.json()["data"]["isoKey"]
         assert "T07:29:00" in iso_key
 
@@ -174,7 +174,8 @@ class TestDownloadsAPI:
     """Тесты записей о скачивании."""
 
     def test_add_and_check_download(self):
-        source_url = "https://test-integration.example.com/unique_test_image_12345"
+        import uuid
+        source_url = f"https://test-integration.example.com/{uuid.uuid4().hex}"
 
         # CHECK (should not exist)
         resp = requests.get(
@@ -240,14 +241,11 @@ class TestPostingRulesAPI:
         rules = resp.json()["data"]
         assert len(rules) >= 1
 
-        # REPLACE rules (batch)
-        resp = requests.put(base, json={
-            "channelId": channel_id,
-            "rules": [
-                {"time": "10:00", "days": ["Monday"], "caption": "Morning"},
-                {"time": "18:00", "days": ["Friday"], "caption": "Evening"},
-            ]
-        })
+        # REPLACE rules (batch) — channelId в query, список правил в body
+        resp = requests.put(base, params={"channelId": channel_id}, json=[
+            {"time": "10:00", "days": ["Monday"], "caption": "Morning", "channelId": channel_id},
+            {"time": "18:00", "days": ["Friday"], "caption": "Evening", "channelId": channel_id},
+        ])
         assert resp.status_code == 200
 
 

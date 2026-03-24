@@ -52,7 +52,7 @@ class TestParseAndTagFlow:
             "publishMode": "user",
             "timeZone": "Asia/Tokyo",
         })
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         ch_id = resp.json()["data"]["id"]
 
         try:

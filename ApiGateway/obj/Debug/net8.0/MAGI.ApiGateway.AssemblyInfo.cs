@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MAGI.ApiGateway")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+eaafa438cb1358d998aba31f2c9c701a8f7ba342")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ba5ae7b94f5a94258ccf702192156f64e84f25ea")]
 [assembly: System.Reflection.AssemblyProductAttribute("MAGI.ApiGateway")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MAGI.ApiGateway")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

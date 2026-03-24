@@ -309,13 +309,23 @@ public class DataService
     public async Task<bool> UpdateScheduleSlotAsync(string isoKey, ScheduleSlotRequest request)
     {
         await using var ctx = CreateDb();
-        // Ищем по (IsoKey + ChannelId) если ChannelId указан
         ScheduleSlotEntity? entity;
         if (request.ChannelId != null)
+        {
             entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
                 s => s.IsoKey == isoKey && s.ChannelId == request.ChannelId);
+        }
         else
-            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        {
+            // Защита: если channelId не указан, проверяем что слот с таким IsoKey единственный
+            var candidates = await ctx.Db.ScheduleSlots.Where(s => s.IsoKey == isoKey).ToListAsync();
+            if (candidates.Count > 1)
+            {
+                _logger.LogWarning("UpdateScheduleSlot: multiple slots with IsoKey={IsoKey}, channelId not specified — refusing to update ambiguous slot", isoKey);
+                return false;
+            }
+            entity = candidates.FirstOrDefault();
+        }
         if (entity == null) return false;
 
         entity.Date = request.Date;
@@ -332,10 +342,20 @@ public class DataService
         await using var ctx = CreateDb();
         ScheduleSlotEntity? entity;
         if (channelId != null)
+        {
             entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
                 s => s.IsoKey == isoKey && s.ChannelId == channelId);
+        }
         else
-            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        {
+            var candidates = await ctx.Db.ScheduleSlots.Where(s => s.IsoKey == isoKey).ToListAsync();
+            if (candidates.Count > 1)
+            {
+                _logger.LogWarning("UpdateScheduleSlotStatus: multiple slots with IsoKey={IsoKey}, channelId not specified — refusing to update", isoKey);
+                return false;
+            }
+            entity = candidates.FirstOrDefault();
+        }
         if (entity == null) return false;
 
         entity.Status = status;
@@ -351,10 +371,20 @@ public class DataService
         await using var ctx = CreateDb();
         ScheduleSlotEntity? entity;
         if (channelId != null)
+        {
             entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(
                 s => s.IsoKey == isoKey && s.ChannelId == channelId);
+        }
         else
-            entity = await ctx.Db.ScheduleSlots.FirstOrDefaultAsync(s => s.IsoKey == isoKey);
+        {
+            var candidates = await ctx.Db.ScheduleSlots.Where(s => s.IsoKey == isoKey).ToListAsync();
+            if (candidates.Count > 1)
+            {
+                _logger.LogWarning("DeleteScheduleSlot: multiple slots with IsoKey={IsoKey}, channelId not specified — refusing to delete ambiguous slot", isoKey);
+                return false;
+            }
+            entity = candidates.FirstOrDefault();
+        }
         if (entity == null) return false;
 
         ctx.Db.ScheduleSlots.Remove(entity);

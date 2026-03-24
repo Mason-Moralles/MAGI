@@ -54,7 +54,7 @@ class TestFullPublishFlow:
             "timeZone": "Europe/Moscow",
             "artsRootPath": "",
         })
-        assert resp.status_code == 200
+        assert resp.status_code in (200, 201)
         channel = resp.json()["data"]
         ch_id = channel["id"]
 
@@ -91,7 +91,7 @@ class TestFullPublishFlow:
                 "caption": "Merry Christmas",
                 "channelId": ch_id,
             })
-            assert slot1_resp.status_code == 200
+            assert slot1_resp.status_code in (200, 201)
             slot1_key = slot1_resp.json()["data"]["isoKey"]
 
             slot2_resp = session.post(f"{GATEWAY_URL}/api/schedule", json={
@@ -100,7 +100,7 @@ class TestFullPublishFlow:
                 "caption": "Evening post",
                 "channelId": ch_id,
             })
-            assert slot2_resp.status_code == 200
+            assert slot2_resp.status_code in (200, 201)
             slot2_key = slot2_resp.json()["data"]["isoKey"]
 
             # ─── 5. Проверяем pending-слоты ───

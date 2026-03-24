@@ -1490,8 +1490,8 @@ namespace MAGIAdmin
                             }
                             else
                             {
-                                // Существующий слот — обновляем через Gateway
-                                await _api.UpdateSlotAsync(slot.IsoKey, slot.Date, slot.Time, slot.Caption ?? "");
+                                // Существующий слот — обновляем через Gateway (с channelId для изоляции)
+                                await _api.UpdateSlotAsync(slot.IsoKey, slot.Date, slot.Time, slot.Caption ?? "", _selectedChannelId);
                             }
                             saved++;
                         }
@@ -1625,7 +1625,7 @@ namespace MAGIAdmin
             {
                 try
                 {
-                    var ok = await _api.DeleteSlotAsync(slot.IsoKey);
+                    var ok = await _api.DeleteSlotAsync(slot.IsoKey, _selectedChannelId);
                     if (!ok)
                     {
                         AddLog("Admin", "ERROR", $"Не удалось удалить слот {slot.IsoKey} из Gateway");
@@ -1708,10 +1708,10 @@ namespace MAGIAdmin
                     }
                     else
                     {
-                        // Существующий слот → обновляем
+                        // Существующий слот → обновляем (с channelId для изоляции)
                         var ok = await _api.UpdateSlotAsync(
                             _editingSlot.IsoKey, _editingSlot.Date,
-                            _editingSlot.Time, _editingSlot.Caption ?? "");
+                            _editingSlot.Time, _editingSlot.Caption ?? "", _selectedChannelId);
 
                         if (ok)
                             AddLog("Admin", "INFO", $"Слот обновлён: {_editingSlot.Date} {_editingSlot.Time}");
@@ -1879,9 +1879,9 @@ namespace MAGIAdmin
                 {
                     var key = slot["isoKey"]?.ToString() ?? "";
                     if (protectedKeys.Contains(key)) continue;
-                    // Это pending/empty — удаляем из Gateway
+                    // Это pending/empty — удаляем из Gateway (с channelId для изоляции!)
                     if (!string.IsNullOrEmpty(key))
-                        await _api.DeleteSlotAsync(key);
+                        await _api.DeleteSlotAsync(key, _selectedChannelId);
                 }
 
                 // Восстанавливаем защищённые слоты

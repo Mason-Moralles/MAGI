@@ -1,5 +1,24 @@
 # MAGI — Руководство по тестированию
 
+## Результаты тестирования
+
+### Python unit-тесты (46 тестов) — все пройдены
+![Python unit-тесты](../tests/images/Все%20unit-тесты.png)
+
+### Python integration-тесты (требуют запущенный Gateway)
+![Python integration-тесты](../tests/images/Python%20integration-тесты.png)
+
+### Python scenario-тесты (E2E сценарии)
+![Python scenario-тесты](../tests/images/Python%20scenario-тесты.png)
+
+### Запуск всех Python-тестов
+![Все Python-тесты](../tests/images/Запуск%20всех%20Python-тестов.png)
+
+### C# xUnit-тесты (EF Core InMemory)
+![C# xUnit-тесты](../tests/images/Запуск%20C%23%20xUnit-тестов.png)
+
+---
+
 ## Структура тестов
 
 ```
@@ -8,6 +27,7 @@ MAGI/
 │   ├── conftest.py                 # Общие фикстуры
 │   ├── pytest.ini                  # Конфигурация pytest
 │   ├── requirements-test.txt       # Зависимости для тестов
+│   ├── images/                     # Скриншоты результатов тестов
 │   ├── unit/                       # Unit-тесты
 │   │   ├── test_select_art.py      # Логика выбора арта (Auto-post)
 │   │   ├── test_filename_tagger.py # FilenameTagger (матчинг, перемещение файлов)
@@ -136,7 +156,7 @@ pytest tests/unit/ --cov=config --cov=FilenameTagger -v
 ```bash
 # Восстановить зависимости и запустить
 cd MAGI
-dotnet test ApiGateway.Tests/ -v
+dotnet test ApiGateway.Tests/ --verbosity normal
 
 # Отдельный класс
 dotnet test ApiGateway.Tests/ --filter "FullyQualifiedName~ChannelServiceTests" -v
@@ -154,7 +174,7 @@ cd MAGI
 pytest tests/ -v
 
 # C#
-dotnet test ApiGateway.Tests/ -v
+dotnet test ApiGateway.Tests/ --verbosity normal
 ```
 
 ---

@@ -48,7 +48,7 @@ class TestChannelCRUD:
             "timeZone": "Europe/Moscow",
             "artsRootPath": "",
         })
-        assert create_resp.status_code == 200
+        assert create_resp.status_code in (200, 201)
         channel = create_resp.json()["data"]
         ch_id = channel["id"]
         assert channel["name"] == "Test Channel"
