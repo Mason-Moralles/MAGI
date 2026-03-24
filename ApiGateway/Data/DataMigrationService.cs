@@ -406,6 +406,9 @@ public class DataMigrationService
 
         // ─── Проверяем недостающие колонки в существующих таблицах ───
         await EnsureMissingColumnsAsync(db);
+
+        // ─── Миграция индексов (старые → новые) ───
+        await MigrateIndexesAsync(db);
     }
 
     /// <summary>
@@ -473,6 +476,102 @@ public class DataMigrationService
                     await cmd.ExecuteNonQueryAsync();
                     _logger.LogInformation("Added column {Table}.{Column}", table, col);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Мигрирует индексы: заменяет старый UNIQUE(IsoKey) на составной UNIQUE(IsoKey, ChannelId).
+    /// Идемпотентно: проверяет текущие индексы и действует только если нужно.
+    /// </summary>
+    private async Task MigrateIndexesAsync(MagiDbContext db)
+    {
+        // Проверяем, есть ли старый уникальный индекс ТОЛЬКО по IsoKey (без ChannelId)
+        // Если есть — удаляем его, т.к. EF Core создаст правильный составной при следующем EnsureCreated
+        // Но EnsureCreated не обновляет существующие таблицы, поэтому создаём вручную.
+
+        var indexes = new List<(string Name, string Sql)>();
+        using (var cmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            cmd.CommandText = "SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='ScheduleSlots'";
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var name = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                var sql = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                indexes.Add((name, sql));
+            }
+        }
+
+        // Ищем старый уникальный индекс по одному IsoKey (содержит "IsoKey" но НЕ содержит "ChannelId")
+        var oldIsoKeyIndex = indexes.FirstOrDefault(i =>
+            !string.IsNullOrEmpty(i.Sql) &&
+            i.Sql.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) &&
+            i.Sql.Contains("IsoKey", StringComparison.OrdinalIgnoreCase) &&
+            !i.Sql.Contains("ChannelId", StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrEmpty(oldIsoKeyIndex.Name))
+        {
+            _logger.LogInformation("Dropping old unique index on ScheduleSlots.IsoKey: {Index}", oldIsoKeyIndex.Name);
+
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = $"DROP INDEX IF EXISTS \"{oldIsoKeyIndex.Name}\"";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Создаём новый составной уникальный индекс (IsoKey + ChannelId)
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_ScheduleSlots_IsoKey_ChannelId\" ON \"ScheduleSlots\" (\"IsoKey\", \"ChannelId\")";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Создаём отдельный неуникальный индекс по IsoKey для быстрого поиска
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = "CREATE INDEX IF NOT EXISTS \"IX_ScheduleSlots_IsoKey\" ON \"ScheduleSlots\" (\"IsoKey\")";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            // Создаём индекс по ChannelId для фильтрации
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                cmd.CommandText = "CREATE INDEX IF NOT EXISTS \"IX_ScheduleSlots_ChannelId\" ON \"ScheduleSlots\" (\"ChannelId\")";
+                await cmd.ExecuteNonQueryAsync();
+            }
+
+            _logger.LogInformation("Created composite unique index IX_ScheduleSlots_IsoKey_ChannelId");
+        }
+        else
+        {
+            // Проверяем, есть ли уже составной индекс — если нет, создаём
+            var hasComposite = indexes.Any(i =>
+                !string.IsNullOrEmpty(i.Sql) &&
+                i.Sql.Contains("IsoKey", StringComparison.OrdinalIgnoreCase) &&
+                i.Sql.Contains("ChannelId", StringComparison.OrdinalIgnoreCase));
+
+            if (!hasComposite)
+            {
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_ScheduleSlots_IsoKey_ChannelId\" ON \"ScheduleSlots\" (\"IsoKey\", \"ChannelId\")";
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText = "CREATE INDEX IF NOT EXISTS \"IX_ScheduleSlots_IsoKey\" ON \"ScheduleSlots\" (\"IsoKey\")";
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText = "CREATE INDEX IF NOT EXISTS \"IX_ScheduleSlots_ChannelId\" ON \"ScheduleSlots\" (\"ChannelId\")";
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                _logger.LogInformation("Created composite unique index IX_ScheduleSlots_IsoKey_ChannelId (no old index found)");
             }
         }
     }

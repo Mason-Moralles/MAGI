@@ -191,3 +191,11 @@ C:\Users\Георгий\AppData\Local\Temp\magi-gw-verify\MAGI.ApiGateway.deps.j
 C:\Users\Георгий\AppData\Local\Temp\magi-gw-verify\MAGI.ApiGateway.runtimeconfig.json
 C:\Users\Георгий\AppData\Local\Temp\magi-gw-verify\MAGI.ApiGateway.dll
 C:\Users\Георгий\AppData\Local\Temp\magi-gw-verify\MAGI.ApiGateway.pdb
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\appsettings.Development.json
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\appsettings.json
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.staticwebassets.endpoints.json
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.exe
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.deps.json
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.runtimeconfig.json
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.dll
+D:\MAGI\ApiGateway.Tests\bin\TestBuild\MAGI.ApiGateway.pdb
