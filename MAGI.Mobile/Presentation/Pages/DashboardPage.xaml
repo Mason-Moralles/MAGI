@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:MAGI.Mobile.Core.Presentation.ViewModels;assembly=MAGI.Mobile.Core"
+             xmlns:components="clr-namespace:MAGI.Mobile.Presentation.Components"
+             x:Class="MAGI.Mobile.Presentation.Pages.DashboardPage"
+             x:DataType="viewModels:DashboardViewModel"
+                  Title="Обзор">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+                 <Label Text="Операционная консоль MAGI"
+                   FontSize="24"
+                   FontAttributes="Bold" />
+
+                 <Label Text="Выбери канал и проверь статус backend перед запуском сервисов."
+                   FontSize="14"
+                   Opacity="0.8" />
+
+                 <Picker Title="Активный канал"
+                    ItemsSource="{Binding Channels}"
+                    SelectedItem="{Binding SelectedChannel}" />
+
+                <Label Text="{Binding DataSourceText}" FontAttributes="Bold" />
+                <Label Text="{Binding LastSyncText}" FontSize="12" Opacity="0.7" />
+
+                <components:StatusBannerView Title="{Binding Banner.Title}"
+                             Message="{Binding Banner.Message}"
+                             BannerBackground="{StaticResource Secondary}"
+                             IsVisible="{Binding HasBanner}" />
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                          <components:MetricCardView Grid.Row="0" Grid.Column="0" Title="Шлюз" Value="{Binding GatewayStatus}" />
+                <components:MetricCardView Grid.Row="0" Grid.Column="1" Title="Каналы" Value="{Binding ChannelCount}" />
+                <components:MetricCardView Grid.Row="1" Grid.Column="0" Title="Слоты в очереди" Value="{Binding PendingSlots}" />
+                <components:MetricCardView Grid.Row="1" Grid.Column="1" Title="Неопубликованные" Value="{Binding UnpostedImages}" />
+            </Grid>
+
+            <Button Text="Обновить обзор"
+                    Command="{Binding RefreshCommand}" />
+
+            <Label Text="{Binding StatusMessage}" />
+            <Label TextColor="Red" Text="{Binding ErrorMessage}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:MAGI.Mobile.Core.Presentation.ViewModels;assembly=MAGI.Mobile.Core"
+             xmlns:domain="clr-namespace:MAGI.Mobile.Core.Domain.Entities;assembly=MAGI.Mobile.Core"
+             xmlns:components="clr-namespace:MAGI.Mobile.Presentation.Components"
+             x:Class="MAGI.Mobile.Presentation.Pages.SchedulePage"
+             x:DataType="viewModels:ScheduleViewModel"
+             Title="Расписание">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Расписание"
+                   FontSize="24"
+                   FontAttributes="Bold" />
+
+            <Label Text="{Binding DataSourceText}" FontAttributes="Bold" />
+            <Label Text="{Binding LastSyncText}" FontSize="12" Opacity="0.7" />
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="12">
+                <Entry Grid.Row="0" Grid.ColumnSpan="2"
+                      Placeholder="Дата (yyyy-MM-dd)"
+                       Text="{Binding NewDate}" />
+                <Entry Grid.Row="1" Grid.Column="0"
+                      Placeholder="Время (HH:mm)"
+                       Text="{Binding NewTime}" />
+                <Entry Grid.Row="1" Grid.Column="1"
+                      Placeholder="Подпись"
+                       Text="{Binding NewCaption}" />
+                  <Button Grid.Row="2" Grid.Column="0" Text="Добавить слот" Command="{Binding AddSlotCommand}" />
+                  <Button Grid.Row="2" Grid.Column="1" Text="Обновить" Command="{Binding RefreshCommand}" />
+            </Grid>
+
+            <components:EmptyStateView Title="{Binding EmptyStateTitle}"
+                                       Message="{Binding EmptyStateMessage}"
+                                       IsVisible="{Binding ShowEmptyState}" />
+
+            <RefreshView Command="{Binding RefreshCommand}"
+                         IsRefreshing="{Binding IsBusy}"
+                         IsVisible="{Binding HasSlots}">
+                <CollectionView ItemsSource="{Binding Slots}"
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedSlot}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="domain:ScheduleSlot">
+                            <components:ScheduleSlotCard />
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+
+                <Button Text="Удалить выбранный слот"
+                    Command="{Binding DeleteSlotCommand}" />
+
+            <Label Text="{Binding StatusMessage}" />
+            <Label TextColor="Red" Text="{Binding ErrorMessage}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

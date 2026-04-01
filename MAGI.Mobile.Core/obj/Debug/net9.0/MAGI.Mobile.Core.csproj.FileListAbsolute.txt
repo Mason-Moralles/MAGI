@@ -1,0 +1,12 @@
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.GeneratedMSBuildEditorConfig.editorconfig
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.AssemblyInfoInputs.cache
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.AssemblyInfo.cs
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.csproj.CoreCompileInputs.cache
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.sourcelink.json
+d:\MAGI\MAGI.Mobile.Core\bin\Debug\net9.0\MAGI.Mobile.Core.deps.json
+d:\MAGI\MAGI.Mobile.Core\bin\Debug\net9.0\MAGI.Mobile.Core.dll
+d:\MAGI\MAGI.Mobile.Core\bin\Debug\net9.0\MAGI.Mobile.Core.pdb
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.dll
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\refint\MAGI.Mobile.Core.dll
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\MAGI.Mobile.Core.pdb
+d:\MAGI\MAGI.Mobile.Core\obj\Debug\net9.0\ref\MAGI.Mobile.Core.dll

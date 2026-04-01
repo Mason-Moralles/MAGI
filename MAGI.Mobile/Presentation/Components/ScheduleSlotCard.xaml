@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:domain="clr-namespace:MAGI.Mobile.Core.Domain.Entities;assembly=MAGI.Mobile.Core"
+             x:Class="MAGI.Mobile.Presentation.Components.ScheduleSlotCard"
+             x:DataType="domain:ScheduleSlot">
+    <Border Padding="12" Margin="0,0,0,8">
+        <VerticalStackLayout>
+            <Label Text="{Binding Date}" FontAttributes="Bold" />
+            <Label Text="{Binding Time}" />
+            <Label Text="{Binding StatusText}" />
+            <Label Text="{Binding Caption}" FontSize="12" Opacity="0.8" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MAGI.Mobile.Core/MAGI.Mobile.Core.csproj" />
+  <Project Path="MAGI.Mobile.Tests/MAGI.Mobile.Tests.csproj" />
+  <Project Path="MAGI.Mobile/MAGI.Mobile.csproj" />
+</Solution>

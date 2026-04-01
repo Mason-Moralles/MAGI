@@ -1,0 +1,111 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = true
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.TargetFramework = net9.0-android
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v9.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = MAGI.Mobile
+build_property.ProjectDir = D:\MAGI\MAGI.Mobile\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/MAGI/MAGI.Mobile/App.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.App.xaml
+build_metadata.AdditionalFiles.TargetPath = App.xaml
+build_metadata.AdditionalFiles.RelativePath = App.xaml
+
+[D:/MAGI/MAGI.Mobile/AppShell.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.AppShell.xaml
+build_metadata.AdditionalFiles.TargetPath = AppShell.xaml
+build_metadata.AdditionalFiles.RelativePath = AppShell.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/EmptyStateView.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.EmptyStateView.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\EmptyStateView.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\EmptyStateView.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/ImageItemCard.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.ImageItemCard.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\ImageItemCard.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\ImageItemCard.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/MetricCardView.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.MetricCardView.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\MetricCardView.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\MetricCardView.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/ScheduleSlotCard.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.ScheduleSlotCard.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\ScheduleSlotCard.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\ScheduleSlotCard.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/ServiceStatusCard.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.ServiceStatusCard.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\ServiceStatusCard.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\ServiceStatusCard.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Components/StatusBannerView.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Components.StatusBannerView.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Components\StatusBannerView.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Components\StatusBannerView.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Pages/DashboardPage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Pages.DashboardPage.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Pages\DashboardPage.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Pages\DashboardPage.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Pages/GalleryPage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Pages.GalleryPage.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Pages\GalleryPage.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Pages\GalleryPage.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Pages/SchedulePage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Pages.SchedulePage.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Pages\SchedulePage.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Pages\SchedulePage.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Pages/ServicesPage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Pages.ServicesPage.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Pages\ServicesPage.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Pages\ServicesPage.xaml
+
+[D:/MAGI/MAGI.Mobile/Presentation/Pages/SettingsPage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Presentation.Pages.SettingsPage.xaml
+build_metadata.AdditionalFiles.TargetPath = Presentation\Pages\SettingsPage.xaml
+build_metadata.AdditionalFiles.RelativePath = Presentation\Pages\SettingsPage.xaml
+
+[D:/MAGI/MAGI.Mobile/Resources/Styles/Colors.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Resources.Styles.Colors.xaml
+build_metadata.AdditionalFiles.TargetPath = Resources\Styles\Colors.xaml
+build_metadata.AdditionalFiles.RelativePath = Resources\Styles\Colors.xaml
+
+[D:/MAGI/MAGI.Mobile/Resources/Styles/Styles.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MAGI.Mobile.Resources.Styles.Styles.xaml
+build_metadata.AdditionalFiles.TargetPath = Resources\Styles\Styles.xaml
+build_metadata.AdditionalFiles.RelativePath = Resources\Styles\Styles.xaml

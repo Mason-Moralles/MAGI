@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:components="clr-namespace:MAGI.Mobile.Presentation.Components"
+             x:Class="MAGI.Mobile.Presentation.Components.StatusBannerView"
+             x:Name="This"
+             x:DataType="components:StatusBannerView">
+    <Border Padding="14"
+            StrokeThickness="1"
+            BackgroundColor="{Binding Source={x:Reference This}, Path=BannerBackground}">
+        <VerticalStackLayout Spacing="6">
+            <Label Text="{Binding Source={x:Reference This}, Path=Title}"
+                   FontAttributes="Bold" />
+            <Label Text="{Binding Source={x:Reference This}, Path=Message}"
+                   Opacity="0.9" />
+        </VerticalStackLayout>
+    </Border>
+</ContentView>

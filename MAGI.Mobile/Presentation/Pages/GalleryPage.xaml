@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:MAGI.Mobile.Core.Presentation.ViewModels;assembly=MAGI.Mobile.Core"
+             xmlns:domain="clr-namespace:MAGI.Mobile.Core.Domain.Entities;assembly=MAGI.Mobile.Core"
+             xmlns:components="clr-namespace:MAGI.Mobile.Presentation.Components"
+             x:Class="MAGI.Mobile.Presentation.Pages.GalleryPage"
+             x:DataType="viewModels:GalleryViewModel"
+             Title="Галерея">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Галерея"
+                   FontSize="24"
+                   FontAttributes="Bold" />
+
+                 <Label Text="{Binding DataSourceText}" FontAttributes="Bold" />
+                 <Label Text="{Binding LastSyncText}" FontSize="12" Opacity="0.7" />
+
+            <Entry Placeholder="Поиск по файлу или персонажу"
+                   Text="{Binding SearchText}" />
+
+            <HorizontalStackLayout Spacing="12">
+                <CheckBox IsChecked="{Binding ShowUnpostedOnly}" />
+                <Label Text="Только неопубликованные" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Spacing="12">
+                <Button Text="Обновить" Command="{Binding RefreshCommand}" />
+                <Button Text="Поделиться выбранным" Command="{Binding ShareSelectedCommand}" />
+            </HorizontalStackLayout>
+
+            <components:EmptyStateView Title="{Binding EmptyStateTitle}"
+                                       Message="{Binding EmptyStateMessage}"
+                                       IsVisible="{Binding ShowEmptyState}" />
+
+            <RefreshView Command="{Binding RefreshCommand}"
+                         IsRefreshing="{Binding IsBusy}"
+                         IsVisible="{Binding HasImages}">
+                <CollectionView ItemsSource="{Binding Images}"
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedImage}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="domain:ImageItem">
+                            <components:ImageItemCard />
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+
+            <Label Text="{Binding StatusMessage}" />
+            <Label TextColor="Red" Text="{Binding ErrorMessage}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewModels="clr-namespace:MAGI.Mobile.Core.Presentation.ViewModels;assembly=MAGI.Mobile.Core"
+             xmlns:domain="clr-namespace:MAGI.Mobile.Core.Domain.Entities;assembly=MAGI.Mobile.Core"
+             xmlns:components="clr-namespace:MAGI.Mobile.Presentation.Components"
+             x:Class="MAGI.Mobile.Presentation.Pages.ServicesPage"
+             x:DataType="viewModels:ServicesViewModel"
+             Title="Сервисы">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+            <Label Text="Микросервисы"
+                   FontSize="24"
+                   FontAttributes="Bold" />
+
+            <Label Text="{Binding DataSourceText}" FontAttributes="Bold" />
+            <Label Text="{Binding LastSyncText}" FontSize="12" Opacity="0.7" />
+
+            <components:StatusBannerView Title="{Binding Banner.Title}"
+                                         Message="{Binding Banner.Message}"
+                                         BannerBackground="{StaticResource Secondary}"
+                                         IsVisible="{Binding HasBanner}" />
+
+                <Button Text="Обновить статусы"
+                    Command="{Binding RefreshCommand}" />
+
+                <components:EmptyStateView Title="Нет актуальных статусов"
+                               Message="Выбери канал на вкладке «Обзор» и обнови список статусов."
+                                       IsVisible="{Binding ShowEmptyState}" />
+
+            <CollectionView ItemsSource="{Binding Services}"
+                            IsVisible="{Binding HasServices}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="domain:ServiceStatus">
+                        <components:ServiceStatusCard />
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                <Button Grid.Row="0" Grid.Column="0" Text="Запустить парсер" Command="{Binding RunParserCommand}" />
+                <Button Grid.Row="0" Grid.Column="1" Text="Остановить парсер" Command="{Binding StopParserCommand}" />
+                <Button Grid.Row="1" Grid.Column="0" Text="Запустить теггер" Command="{Binding RunTaggerCommand}" />
+                <Button Grid.Row="1" Grid.Column="1" Text="Остановить теггер" Command="{Binding StopTaggerCommand}" />
+                <Button Grid.Row="2" Grid.Column="0" Text="Запустить паблишер" Command="{Binding RunPublisherCommand}" />
+                <Button Grid.Row="2" Grid.Column="1" Text="Остановить паблишер" Command="{Binding StopPublisherCommand}" />
+            </Grid>
+
+            <Label Text="{Binding StatusMessage}" />
+            <Label TextColor="Red" Text="{Binding ErrorMessage}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
