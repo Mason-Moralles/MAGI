@@ -1,5 +1,5 @@
 ﻿MAGIAdmin
-
+1.0.0.0
 
 winexe
 C#
@@ -12,9 +12,9 @@ TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR
 D:\MAGI\AdmPanel\WpfApp1\App.xaml
 5-1496210959
 
-17713153753
-2081937164171
+191906669322
+208-1288314326
 AutopostSettingsWindow.xaml;ChannelManagementWindow.xaml;MainWindow.xaml;ParserSettingsWindow.xaml;TaggerSettingsWindow.xaml;
 
-False
+True
 
