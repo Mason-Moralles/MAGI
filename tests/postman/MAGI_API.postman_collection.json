@@ -1,0 +1,398 @@
+{
+  "info": {
+    "name": "MAGI API",
+    "description": "Postman collection for KT3: core API checks for MAGI Gateway.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "channel_id",
+      "value": ""
+    },
+    {
+      "key": "iso_key",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Health payload contains healthy status', function () {",
+                  "    pm.expect(body.status).to.eql('healthy');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/health",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Channel Flow",
+      "item": [
+        {
+          "name": "Create Channel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('channel_id', body.data.id);",
+                  "pm.test('Channel id is saved', function () {",
+                  "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Channel name is correct', function () {",
+                  "    pm.expect(body.data.name).to.eql('KT3 Test Channel');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"KT3 Test Channel\",\n  \"link\": \"@kt3_test_channel\",\n  \"publishMode\": \"bot\",\n  \"timeZone\": \"Europe/Moscow\",\n  \"artsRootPath\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/channel",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "channel"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Channel By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Correct channel returned', function () {",
+                  "    pm.expect(body.data.id).to.eql(pm.collectionVariables.get('channel_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/api/channel/{{channel_id}}",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Parser Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('imagesPerHashtag updated', function () {",
+                  "    pm.expect(body.data.imagesPerHashtag).to.eql(75);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hashtags\": [\"#evangelion\", \"#anime\"],\n  \"imagesPerHashtag\": 75,\n  \"sources\": \"pinterest,pixiv\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/channel/{{channel_id}}/parser-config",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}",
+                "parser-config"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Set Filename Tags",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Two filename tags created', function () {",
+                  "    pm.expect(body.data.length).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tags\": [\n    { \"keyword\": \"asuka\", \"tag\": \"#Asuka_Langley\" },\n    { \"keyword\": \"rei\", \"tag\": \"#Rei_Ayanami\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/channel/{{channel_id}}/filename-tags",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}",
+                "filename-tags"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data and Schedule Flow",
+      "item": [
+        {
+          "name": "Add Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Image linked to channel', function () {",
+                  "    pm.expect(body.data.channelId).to.eql(pm.collectionVariables.get('channel_id'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"kt3_asuka_001.jpg\",\n  \"person\": \"#Asuka_Langley\",\n  \"posted\": 0,\n  \"caption\": \"KT3 image\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/data/images",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "data",
+                "images"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Schedule Slot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('iso_key', body.data.isoKey);",
+                  "pm.test('Slot starts as pending', function () {",
+                  "    pm.expect(body.data.status).to.eql('pending');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-12-25\",\n  \"time\": \"14:30\",\n  \"caption\": \"KT3 scheduled post\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/schedule",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "schedule"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Downloads Count",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Count field exists', function () {",
+                  "    pm.expect(body.data.count).to.not.equal(undefined);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/api/data/downloads/count",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "data",
+                "downloads",
+                "count"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Channel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{gateway_url}}/api/channel/{{channel_id}}",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

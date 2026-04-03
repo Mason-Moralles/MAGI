@@ -4,7 +4,8 @@
         Title="Управление каналами" Height="916" Width="860"
         WindowStartupLocation="CenterOwner"
         Background="#DCD8F0"
-        ResizeMode="CanResizeWithGrip">
+    ResizeMode="CanResizeWithGrip"
+    AutomationProperties.AutomationId="ChannelManagement_Root">
 
     <Window.Resources>
         <Style x:Key="FieldLabel" TargetType="TextBlock">
@@ -78,7 +79,7 @@
 
                 <TextBlock Grid.Row="0" Text="Каналы" FontSize="16" FontWeight="Bold" Foreground="#444" Margin="0,0,0,10"/>
 
-                <ListBox Grid.Row="1" x:Name="ChannelListBox" Background="Transparent" BorderThickness="0"
+                <ListBox Grid.Row="1" x:Name="ChannelListBox" AutomationProperties.AutomationId="ChannelManagement_ChannelList" Background="Transparent" BorderThickness="0"
                          SelectionChanged="ChannelList_SelectionChanged"
                          DisplayMemberPath="DisplayName">
                     <ListBox.ItemContainerStyle>
@@ -108,9 +109,9 @@
                 </ListBox>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-                    <Button Content="+ Добавить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
+                        <Button x:Name="BtnAddChannel" AutomationProperties.AutomationId="ChannelManagement_AddChannel" Content="+ Добавить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
                             Click="AddChannel_Click" Margin="0,0,6,0"/>
-                    <Button Content="X Удалить" Style="{StaticResource ActionBtn}" Background="#E05050" Foreground="White"
+                        <Button Content="X Удалить" Style="{StaticResource ActionBtn}" Background="#E05050" Foreground="White"
                             x:Name="BtnDeleteChannel" Click="DeleteChannel_Click" IsEnabled="False"/>
                 </StackPanel>
             </Grid>
@@ -131,7 +132,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Название"/>
-                        <TextBox x:Name="TbName" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                        <TextBox x:Name="TbName" AutomationProperties.AutomationId="ChannelManagement_Name" Grid.Column="1" Style="{StaticResource FieldInput}"/>
                     </Grid>
                     <TextBlock Style="{StaticResource HintText}" Text="Любое имя для идентификации канала"/>
 
@@ -141,7 +142,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Ссылка на канал"/>
-                        <TextBox x:Name="TbLink" Grid.Column="1" Style="{StaticResource FieldInput}"/>
+                        <TextBox x:Name="TbLink" AutomationProperties.AutomationId="ChannelManagement_Link" Grid.Column="1" Style="{StaticResource FieldInput}"/>
                     </Grid>
                     <TextBlock Style="{StaticResource HintText}" Text="Формат: @channelname или https://t.me/channelname"/>
 
@@ -151,7 +152,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Режим постинга"/>
-                        <ComboBox x:Name="CbPublishMode" Grid.Column="1" Height="28" FontSize="13"
+                        <ComboBox x:Name="CbPublishMode" AutomationProperties.AutomationId="ChannelManagement_PublishMode" Grid.Column="1" Height="28" FontSize="13"
                                   Background="White" BorderBrush="#B5B5D8">
                             <ComboBoxItem Content="user" IsSelected="True"/>
                             <ComboBoxItem Content="bot"/>
@@ -223,7 +224,7 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Часовой пояс"/>
-                        <TextBox x:Name="TbTimeZone" Grid.Column="1" Style="{StaticResource FieldInput}" Text="Europe/Moscow"/>
+                        <TextBox x:Name="TbTimeZone" AutomationProperties.AutomationId="ChannelManagement_TimeZone" Grid.Column="1" Style="{StaticResource FieldInput}" Text="Europe/Moscow"/>
                     </Grid>
 
                     <Grid Margin="0,0,0,2">
@@ -246,7 +247,7 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Arts Root Path"/>
-                        <TextBox x:Name="TbArtsRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
+                        <TextBox x:Name="TbArtsRootPath" AutomationProperties.AutomationId="ChannelManagement_ArtsRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
                                  ToolTip="Корневая папка с изображениями для канала"/>
                         <Button Grid.Column="2" Content="..." Style="{StaticResource ActionBtn}"
                                 Background="#8E82E8" Foreground="White" Margin="6,0,0,0"
@@ -262,9 +263,9 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Style="{StaticResource FieldLabel}" Text="Создать папку"/>
-                        <TextBox x:Name="TbArtsNewRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
+                        <TextBox x:Name="TbArtsNewRootPath" AutomationProperties.AutomationId="ChannelManagement_ArtsNewRootPath" Grid.Column="1" Style="{StaticResource FieldInput}"
                                  ToolTip="Базовый путь, в котором будет создана папка {ChannelName}-Images"/>
-                        <Button Grid.Column="2" Content="Создать" Style="{StaticResource ActionBtn}"
+                        <Button AutomationProperties.AutomationId="ChannelManagement_CreateFolder" Grid.Column="2" Content="Создать" Style="{StaticResource ActionBtn}"
                                 Background="#5CAA5C" Foreground="White" Margin="6,0,0,0"
                                 Click="CreateFolderStructure_Click"/>
                     </Grid>
@@ -284,7 +285,7 @@
 
                     <!-- Save button -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                        <Button Content="Сохранить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
+                        <Button x:Name="BtnSaveChannel" AutomationProperties.AutomationId="ChannelManagement_SaveChannel" Content="Сохранить" Style="{StaticResource ActionBtn}" Background="#7B6EE7" Foreground="White"
                                 Click="SaveChannel_Click" Width="140"/>
                     </StackPanel>
                 </StackPanel>

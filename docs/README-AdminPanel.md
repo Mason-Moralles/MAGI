@@ -156,3 +156,19 @@ dotnet build AdmPanel/WpfApp1/WpfApp1.csproj
 | `TaggerSettingsWindow.xaml / .cs` | Per-channel настройки теггера |
 | `AutopostSettingsWindow.xaml / .cs` | Telegram-креденшалы канала (из Gateway) |
 | `ChannelManagementWindow.xaml / .cs` | CRUD управление каналами |
+
+---
+
+## UI-автоматизация
+
+Для автоматизации WPF-интерфейса в проект добавлен отдельный тестовый проект:
+
+- [../AdmPanel/MAGI.AdminPanel.UiTests/MAGI.AdminPanel.UiTests.csproj](../AdmPanel/MAGI.AdminPanel.UiTests/MAGI.AdminPanel.UiTests.csproj)
+
+Тесты используют `Appium Windows Driver` и `WinAppDriver` и опираются на `AutomationId`, добавленные в ключевые контролы главного окна и окна управления каналами.
+
+Это позволяет стабильно автоматизировать:
+- открытие окна управления каналами;
+- создание канала;
+- выбор канала в главном окне;
+- создание слота расписания.

@@ -5,7 +5,8 @@
         Title="MAGI" Height="900" Width="1360"
         MinHeight="700" MinWidth="1000"
         Background="#DCD8F0"
-        WindowStartupLocation="CenterScreen">
+    WindowStartupLocation="CenterScreen"
+    AutomationProperties.AutomationId="MainWindow_Root">
 
     <Window.Resources>
         <!-- ══════════ CONVERTERS ══════════ -->
@@ -143,6 +144,7 @@
 
                 <!-- Nav buttons -->
                 <ListBox Grid.Row="1" x:Name="NavList" Background="Transparent" BorderThickness="0"
+                    AutomationProperties.AutomationId="MainWindow_NavList"
                          SelectionChanged="NavList_SelectionChanged">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
@@ -172,9 +174,9 @@
                         </Style>
                     </ListBox.ItemContainerStyle>
 
-                    <ListBoxItem Content="⚙  Микросервисы" IsSelected="True"/>
-                    <ListBoxItem Content="📁  База артов"/>
-                    <ListBoxItem Content="📅  Расписание"/>
+                    <ListBoxItem x:Name="NavMicroservices" AutomationProperties.AutomationId="MainWindow_NavMicroservices" Content="⚙  Микросервисы" IsSelected="True"/>
+                    <ListBoxItem x:Name="NavArtsBase" AutomationProperties.AutomationId="MainWindow_NavArtsBase" Content="📁  База артов"/>
+                    <ListBoxItem x:Name="NavSchedule" AutomationProperties.AutomationId="MainWindow_NavSchedule" Content="📅  Расписание"/>
                 </ListBox>
 
                 <!-- Bottom sidebar: Gateway status + Channel management -->
@@ -190,7 +192,7 @@
                     </Border>
 
                     <!-- Channel management button -->
-                    <Button Content="📡 Каналы" Style="{StaticResource MagiBtn}"
+                        <Button x:Name="BtnChannelManagement" AutomationProperties.AutomationId="MainWindow_ChannelManagement" Content="📡 Каналы" Style="{StaticResource MagiBtn}"
                             Click="ChannelManagement_Click" HorizontalAlignment="Stretch"
                             Padding="8,6" FontSize="12"/>
                 </StackPanel>
@@ -210,12 +212,19 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Канал:" FontSize="13" FontWeight="SemiBold" Foreground="#555"
                                    VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <ComboBox x:Name="ChannelSelector" Width="280" Height="30" FontSize="13"
+                        <ComboBox x:Name="ChannelSelector" AutomationProperties.AutomationId="MainWindow_ChannelSelector" Width="280" Height="30" FontSize="13"
                                   DisplayMemberPath="Name" SelectedValuePath="Id"
-                                  SelectionChanged="ChannelSelector_SelectionChanged"/>
-                        <Button Content="Обновить" Style="{StaticResource MagiBtn}" Margin="10,0,0,0"
+                                  SelectionChanged="ChannelSelector_SelectionChanged">
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="AutomationProperties.AutomationId" Value="{Binding Id}"/>
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                        </ComboBox>
+                        <Button x:Name="BtnRefreshChannels" AutomationProperties.AutomationId="MainWindow_RefreshChannels" Content="Обновить" Style="{StaticResource MagiBtn}" Margin="10,0,0,0"
                                 Click="RefreshChannels_Click" Padding="10,4" FontSize="12"/>
-                        <TextBlock x:Name="ChannelInfoText" Text="" FontSize="11" Foreground="#888"
+                        <TextBlock x:Name="ChannelInfoText" AutomationProperties.AutomationId="MainWindow_ChannelInfoText" Text="" FontSize="11" Foreground="#888"
                                    VerticalAlignment="Center" Margin="16,0,0,0"/>
                     </StackPanel>
                 </Border>
@@ -264,7 +273,7 @@
                                         <Ellipse x:Name="ParserStatusDot" Width="10" Height="10" Fill="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                         <TextBlock x:Name="ParserStatusText" Text="Status: Stopped" FontSize="11" Foreground="#888" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="ParserSettings_Click"/>
+                                    <Button x:Name="BtnParserSettings" AutomationProperties.AutomationId="MainWindow_ParserSettings" Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="ParserSettings_Click"/>
                                 </Grid>
 
                                 <!-- Source selection checkboxes -->
@@ -298,7 +307,7 @@
                                         <Ellipse x:Name="TaggerStatusDot" Width="10" Height="10" Fill="Gray" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                         <TextBlock x:Name="TaggerStatusText" Text="Status: Stopped" FontSize="11" Foreground="#888" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    <Button Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="TaggerSettings_Click"/>
+                                    <Button x:Name="BtnTaggerSettings" AutomationProperties.AutomationId="MainWindow_TaggerSettings" Style="{StaticResource GearBtn}" HorizontalAlignment="Right" Click="TaggerSettings_Click"/>
                                 </Grid>
 
                                 <Border Grid.Row="2" Background="Transparent" MinHeight="80"/>
@@ -564,7 +573,7 @@
                 </Grid>
 
                 <!-- PAGE 2: Расписание -->
-                <Grid x:Name="PageSchedule" Visibility="Collapsed">
+                <Grid x:Name="PageSchedule" AutomationProperties.AutomationId="MainWindow_PageSchedule" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -581,9 +590,9 @@
                     <!-- Toolbar -->
                     <Border Grid.Row="1" Padding="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="+ Добавить пост" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                            <Button x:Name="BtnAddScheduleSlot" AutomationProperties.AutomationId="MainWindow_AddScheduleSlot" Content="+ Добавить пост" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="AddScheduleSlot_Click"/>
-                                <Button Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
+                                <Button x:Name="BtnSaveSchedule" AutomationProperties.AutomationId="MainWindow_SaveSchedule" Content="Сохранить" Style="{StaticResource MagiBtn}" Padding="12,6" Margin="0,0,6,0"
                                     Click="SaveSchedule_Click"/>
                             </StackPanel>
                     </Border>
@@ -597,7 +606,7 @@
 
                         <!-- Schedule table -->
                         <Border Grid.Column="0" Style="{StaticResource CardBorder}" Padding="0" Margin="0,0,0,0">
-                            <DataGrid x:Name="ScheduleDataGrid" Style="{StaticResource ScheduleGrid}"
+                            <DataGrid x:Name="ScheduleDataGrid" AutomationProperties.AutomationId="MainWindow_ScheduleGrid" Style="{StaticResource ScheduleGrid}"
                                       SelectionChanged="ScheduleRow_Selected">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Дата"        Binding="{Binding Date}"        Width="110"/>
@@ -630,10 +639,10 @@
                                                Foreground="#444" Margin="0,0,0,12"/>
 
                                     <TextBlock Text="Дата" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                    <DatePicker x:Name="DpSlotDate" Height="30" Margin="0,0,0,10"/>
+                                    <DatePicker x:Name="DpSlotDate" AutomationProperties.AutomationId="MainWindow_SlotDate" Height="30" Margin="0,0,0,10"/>
 
                                     <TextBlock Text="Время" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                    <TextBox x:Name="TbSlotTime" Height="30" Padding="6,4" FontSize="13"
+                                    <TextBox x:Name="TbSlotTime" AutomationProperties.AutomationId="MainWindow_SlotTime" Height="30" Padding="6,4" FontSize="13"
                                              Background="White" BorderBrush="#C5C5FF" Margin="0,0,0,10"/>
 
                                     <TextBlock Text="Изображение" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
@@ -649,7 +658,7 @@
                                     </Grid>
 
                                     <TextBlock Text="Подпись" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                    <TextBox x:Name="TbSlotCaption" Height="60" Padding="6,4" FontSize="13"
+                                    <TextBox x:Name="TbSlotCaption" AutomationProperties.AutomationId="MainWindow_SlotCaption" Height="60" Padding="6,4" FontSize="13"
                                              Background="White" BorderBrush="#C5C5FF" TextWrapping="Wrap"
                                              AcceptsReturn="True" Margin="0,0,0,10"/>
 
@@ -665,7 +674,7 @@
                                     </ComboBox>
 
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <Button Content="Сохранить слот" Style="{StaticResource MagiBtn}"
+                                        <Button x:Name="BtnSaveSlot" AutomationProperties.AutomationId="MainWindow_SaveSlot" Content="Сохранить слот" Style="{StaticResource MagiBtn}"
                                                 Padding="12,6" Margin="0,0,6,0" Click="SaveSlot_Click"/>
                                         <Button Content="Отмена" Style="{StaticResource MagiBtn}"
                                                 Padding="12,6" Background="#E0D8F0" Click="CancelSlotEdit_Click"/>

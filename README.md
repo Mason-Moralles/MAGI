@@ -371,6 +371,6 @@ Python-сервисы получают `channelId` и загружают per-cha
 | [Parser](docs/README-Parser.md) | Pinterest и Pixiv, негативные теги, конфиг |
 | [FilenameTagger](docs/README-FilenameTagger.md) | Маппинг тегов, алгоритм тегирования |
 | [Auto-post](docs/README-Autopost.md) | Расписание, IPublisher, мультиканальная публикация |
-| [Testing](docs/README-Testing.md) | Python Unit-тесты, Integration-тесты, Scenario; C# xUnit-тесты |
+| [Testing KT1-KT7](docs/New-Tests/README.md) | Единый README: план, покрытие, API, SQL, UI, интеграция и итог по КТ1-КТ7 |
 | [DataBase](docs/README-DB.md) | Архитектура данных |
 

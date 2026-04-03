@@ -1,0 +1,3531 @@
+{
+  "collection": {
+    "item": [
+      {
+        "id": "e0694f03-ab19-4839-9775-9ce331fbc351",
+        "name": "Health",
+        "item": [
+          {
+            "id": "5a5b40ef-fbc8-4732-aa9c-2ab6bcd56a5b",
+            "name": "Gateway Health",
+            "request": {
+              "url": {
+                "path": [
+                  "health"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "GET"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "da445810-2c05-47c5-9a1f-b4072425c931",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('Health payload contains healthy status', function () {",
+                    "    pm.expect(body.status).to.eql('healthy');",
+                    "});"
+                  ],
+                  "_lastExecutionId": "fb262223-b285-4eb3-93c3-fb2e15f13f42"
+                }
+              }
+            ]
+          }
+        ],
+        "event": []
+      },
+      {
+        "id": "acb2ef9d-b21d-4cd9-97ab-744fe470f6fe",
+        "name": "Channel Flow",
+        "item": [
+          {
+            "id": "a1f095ea-fa05-45f9-8b3c-f437bb0746da",
+            "name": "Create Channel",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "channel"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"KT3 Test Channel\",\n  \"link\": \"@kt3_test_channel\",\n  \"publishMode\": \"bot\",\n  \"timeZone\": \"Europe/Moscow\",\n  \"artsRootPath\": \"\"\n}"
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "a6a22885-1a7b-40f3-a39a-53f02448be0e",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 201', function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.collectionVariables.set('channel_id', body.data.id);",
+                    "pm.test('Channel id is saved', function () {",
+                    "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                    "});",
+                    "pm.test('Channel name is correct', function () {",
+                    "    pm.expect(body.data.name).to.eql('KT3 Test Channel');",
+                    "});"
+                  ],
+                  "_lastExecutionId": "86b2b24a-6c2f-4477-baaf-ca5de304c087"
+                }
+              }
+            ]
+          },
+          {
+            "id": "9e38bd8c-0178-4b9f-a0e8-011a0b143c40",
+            "name": "Get Channel By Id",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "channel",
+                  "{{channel_id}}"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "GET"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "28a61153-a9a0-4cf8-a886-2f955b043def",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('Correct channel returned', function () {",
+                    "    pm.expect(body.data.id).to.eql(pm.collectionVariables.get('channel_id'));",
+                    "});"
+                  ],
+                  "_lastExecutionId": "7c934869-58ec-495e-8ed8-4ba6ea45ae18"
+                }
+              }
+            ]
+          },
+          {
+            "id": "4d841e0b-740b-4392-9762-1d8db29836d3",
+            "name": "Update Parser Config",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "channel",
+                  "{{channel_id}}",
+                  "parser-config"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "method": "PUT",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"hashtags\": [\"#evangelion\", \"#anime\"],\n  \"imagesPerHashtag\": 75,\n  \"sources\": \"pinterest,pixiv\"\n}"
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "71416217-1d54-4965-8b0b-3829f8de17b4",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('imagesPerHashtag updated', function () {",
+                    "    pm.expect(body.data.imagesPerHashtag).to.eql(75);",
+                    "});"
+                  ],
+                  "_lastExecutionId": "b2cb91ee-70e7-483f-8d1a-c73d9a6c2800"
+                }
+              }
+            ]
+          },
+          {
+            "id": "2ba1dd05-1579-4039-93a2-41ca0268c944",
+            "name": "Set Filename Tags",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "channel",
+                  "{{channel_id}}",
+                  "filename-tags"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "method": "PUT",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"tags\": [\n    { \"keyword\": \"asuka\", \"tag\": \"#Asuka_Langley\" },\n    { \"keyword\": \"rei\", \"tag\": \"#Rei_Ayanami\" }\n  ]\n}"
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "253f061b-e02a-438b-a81d-ba4b89bc3aee",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('Two filename tags created', function () {",
+                    "    pm.expect(body.data.length).to.eql(2);",
+                    "});"
+                  ],
+                  "_lastExecutionId": "d45c683f-9bc4-4389-81c6-320fa623f44d"
+                }
+              }
+            ]
+          }
+        ],
+        "event": []
+      },
+      {
+        "id": "06f0a940-5f9b-4804-808c-4180a3d0252e",
+        "name": "Data and Schedule Flow",
+        "item": [
+          {
+            "id": "78d2db05-a954-4818-88b2-a13f64ac127a",
+            "name": "Add Image",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "data",
+                  "images"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"fileName\": \"kt3_asuka_001.jpg\",\n  \"person\": \"#Asuka_Langley\",\n  \"posted\": 0,\n  \"caption\": \"KT3 image\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "7740c650-57e4-4488-8520-9587b66791e7",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('Image linked to channel', function () {",
+                    "    pm.expect(body.data.channelId).to.eql(pm.collectionVariables.get('channel_id'));",
+                    "});"
+                  ],
+                  "_lastExecutionId": "d124677e-d727-4baa-829c-6011f257827c"
+                }
+              }
+            ]
+          },
+          {
+            "id": "daac6b61-b66c-4f82-9cbb-76398f889f06",
+            "name": "Create Schedule Slot",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "schedule"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"date\": \"2026-12-25\",\n  \"time\": \"14:30\",\n  \"caption\": \"KT3 scheduled post\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+              }
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "29b29f05-de5d-4b00-bb85-bde10093e034",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 201', function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.collectionVariables.set('iso_key', body.data.isoKey);",
+                    "pm.test('Slot starts as pending', function () {",
+                    "    pm.expect(body.data.status).to.eql('pending');",
+                    "});"
+                  ],
+                  "_lastExecutionId": "3cab901d-7667-48f9-b145-b4bb0125b095"
+                }
+              }
+            ]
+          },
+          {
+            "id": "b4061c0f-1fcb-4194-8748-866fd5a79170",
+            "name": "Get Downloads Count",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "data",
+                  "downloads",
+                  "count"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "GET"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "22ab507d-e37f-43bc-83bb-755dc19ae09a",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "const body = pm.response.json();",
+                    "pm.test('Count field exists', function () {",
+                    "    pm.expect(body.data.count).to.not.equal(undefined);",
+                    "});"
+                  ],
+                  "_lastExecutionId": "b912b982-6f8c-4635-91fc-d23ca1dbedcb"
+                }
+              }
+            ]
+          },
+          {
+            "id": "336b2545-e881-421a-967a-4d3f1061b9f2",
+            "name": "Delete Channel",
+            "request": {
+              "url": {
+                "path": [
+                  "api",
+                  "channel",
+                  "{{channel_id}}"
+                ],
+                "host": [
+                  "{{gateway_url}}"
+                ],
+                "query": [],
+                "variable": []
+              },
+              "method": "DELETE"
+            },
+            "response": [],
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "id": "775ab729-47af-449a-a096-a79f13f0433c",
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});"
+                  ],
+                  "_lastExecutionId": "44d1cf99-854b-4090-aa19-3973e1163c17"
+                }
+              }
+            ]
+          }
+        ],
+        "event": []
+      }
+    ],
+    "event": [],
+    "variable": [
+      {
+        "type": "any",
+        "value": "http://localhost:5000",
+        "key": "gateway_url"
+      },
+      {
+        "type": "any",
+        "value": "",
+        "key": "channel_id"
+      },
+      {
+        "type": "any",
+        "value": "",
+        "key": "iso_key"
+      }
+    ],
+    "info": {
+      "_postman_id": "a099bec5-b863-4481-af98-5009acc79e9f",
+      "name": "MAGI API",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "description": {
+        "content": "Postman collection for KT3: core API checks for MAGI Gateway.",
+        "type": "text/plain"
+      }
+    }
+  },
+  "environment": {
+    "id": "142c58ed-d135-45aa-9e38-621f18bd847e",
+    "values": []
+  },
+  "globals": {
+    "id": "401a7f91-e4a1-4613-bfd7-9d0bd75c2159",
+    "values": []
+  },
+  "run": {
+    "stats": {
+      "iterations": {
+        "total": 1,
+        "pending": 0,
+        "failed": 0
+      },
+      "items": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "scripts": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequests": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "requests": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "tests": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "assertions": {
+        "total": 18,
+        "pending": 0,
+        "failed": 0
+      },
+      "testScripts": {
+        "total": 9,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequestScripts": {
+        "total": 0,
+        "pending": 0,
+        "failed": 0
+      }
+    },
+    "timings": {
+      "responseAverage": 7.444444444444445,
+      "responseMin": 3,
+      "responseMax": 25,
+      "responseSd": 6.3963724287218895,
+      "dnsAverage": 0,
+      "dnsMin": 0,
+      "dnsMax": 0,
+      "dnsSd": 0,
+      "firstByteAverage": 0,
+      "firstByteMin": 0,
+      "firstByteMax": 0,
+      "firstByteSd": 0,
+      "started": 1775207615390,
+      "completed": 1775207616198
+    },
+    "executions": [
+      {
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 9,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "be7af5b5-30de-4752-a497-1e424965e681",
+          "httpRequestId": "e12c6652-0f68-4c8f-8086-eb7b899d4cda"
+        },
+        "item": {
+          "id": "5a5b40ef-fbc8-4732-aa9c-2ab6bcd56a5b",
+          "name": "Gateway Health",
+          "request": {
+            "url": {
+              "path": [
+                "health"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "da445810-2c05-47c5-9a1f-b4072425c931",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Health payload contains healthy status', function () {",
+                  "    pm.expect(body.status).to.eql('healthy');",
+                  "});"
+                ],
+                "_lastExecutionId": "fb262223-b285-4eb3-93c3-fb2e15f13f42"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "health"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "dfa88f58-97f5-4f08-b14c-298c2d9f622b",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "ae491787-f228-4555-af9e-d660261728c3",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:34 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              34,
+              104,
+              101,
+              97,
+              108,
+              116,
+              104,
+              121,
+              34,
+              44,
+              34,
+              115,
+              101,
+              114,
+              118,
+              105,
+              99,
+              101,
+              34,
+              58,
+              34,
+              77,
+              65,
+              71,
+              73,
+              46,
+              65,
+              112,
+              105,
+              71,
+              97,
+              116,
+              101,
+              119,
+              97,
+              121,
+              34,
+              44,
+              34,
+              116,
+              105,
+              109,
+              101,
+              115,
+              116,
+              97,
+              109,
+              112,
+              34,
+              58,
+              34,
+              50,
+              48,
+              50,
+              54,
+              45,
+              48,
+              52,
+              45,
+              48,
+              51,
+              84,
+              48,
+              57,
+              58,
+              49,
+              51,
+              58,
+              51,
+              53,
+              46,
+              52,
+              50,
+              49,
+              53,
+              53,
+              49,
+              49,
+              90,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 25,
+          "responseSize": 91
+        },
+        "id": "5a5b40ef-fbc8-4732-aa9c-2ab6bcd56a5b",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "Health payload contains healthy status",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "b9cf469b-c5f2-4604-94b5-ccb26649e322",
+          "length": 9,
+          "cycles": 1,
+          "position": 1,
+          "iteration": 0,
+          "httpRequestId": "61245856-db58-4e43-ba18-55ca49be6d02"
+        },
+        "item": {
+          "id": "a1f095ea-fa05-45f9-8b3c-f437bb0746da",
+          "name": "Create Channel",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "channel"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"KT3 Test Channel\",\n  \"link\": \"@kt3_test_channel\",\n  \"publishMode\": \"bot\",\n  \"timeZone\": \"Europe/Moscow\",\n  \"artsRootPath\": \"\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "a6a22885-1a7b-40f3-a39a-53f02448be0e",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('channel_id', body.data.id);",
+                  "pm.test('Channel id is saved', function () {",
+                  "    pm.expect(body.data.id).to.be.a('string').and.not.empty;",
+                  "});",
+                  "pm.test('Channel name is correct', function () {",
+                  "    pm.expect(body.data.name).to.eql('KT3 Test Channel');",
+                  "});"
+                ],
+                "_lastExecutionId": "86b2b24a-6c2f-4477-baaf-ca5de304c087"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "channel"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "39bdccb8-1d08-4cc7-a224-ef38a3b86505",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "140",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"name\": \"KT3 Test Channel\",\n  \"link\": \"@kt3_test_channel\",\n  \"publishMode\": \"bot\",\n  \"timeZone\": \"Europe/Moscow\",\n  \"artsRootPath\": \"\"\n}"
+          }
+        },
+        "response": {
+          "id": "a13fc362-210c-428d-8fc8-ad36f294a59d",
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:34 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Location",
+              "value": "http://localhost:5000/api/Channel/36e7da20"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              105,
+              100,
+              34,
+              58,
+              34,
+              51,
+              54,
+              101,
+              55,
+              100,
+              97,
+              50,
+              48,
+              34,
+              44,
+              34,
+              110,
+              97,
+              109,
+              101,
+              34,
+              58,
+              34,
+              75,
+              84,
+              51,
+              32,
+              84,
+              101,
+              115,
+              116,
+              32,
+              67,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              34,
+              44,
+              34,
+              108,
+              105,
+              110,
+              107,
+              34,
+              58,
+              34,
+              64,
+              107,
+              116,
+              51,
+              95,
+              116,
+              101,
+              115,
+              116,
+              95,
+              99,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              34,
+              44,
+              34,
+              110,
+              101,
+              116,
+              119,
+              111,
+              114,
+              107,
+              73,
+              100,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              112,
+              117,
+              98,
+              108,
+              105,
+              115,
+              104,
+              77,
+              111,
+              100,
+              101,
+              34,
+              58,
+              34,
+              98,
+              111,
+              116,
+              34,
+              44,
+              34,
+              105,
+              115,
+              65,
+              99,
+              116,
+              105,
+              118,
+              101,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              97,
+              112,
+              105,
+              73,
+              100,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              97,
+              112,
+              105,
+              72,
+              97,
+              115,
+              104,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              98,
+              111,
+              116,
+              84,
+              111,
+              107,
+              101,
+              110,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              115,
+              101,
+              115,
+              115,
+              105,
+              111,
+              110,
+              70,
+              105,
+              108,
+              101,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              116,
+              105,
+              109,
+              101,
+              90,
+              111,
+              110,
+              101,
+              34,
+              58,
+              34,
+              69,
+              117,
+              114,
+              111,
+              112,
+              101,
+              47,
+              77,
+              111,
+              115,
+              99,
+              111,
+              119,
+              34,
+              44,
+              34,
+              100,
+              101,
+              108,
+              97,
+              121,
+              66,
+              101,
+              116,
+              119,
+              101,
+              101,
+              110,
+              80,
+              111,
+              115,
+              116,
+              115,
+              34,
+              58,
+              53,
+              44,
+              34,
+              97,
+              114,
+              116,
+              115,
+              82,
+              111,
+              111,
+              116,
+              80,
+              97,
+              116,
+              104,
+              34,
+              58,
+              34,
+              34,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              67,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              32,
+              99,
+              114,
+              101,
+              97,
+              116,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 9,
+          "responseSize": 305
+        },
+        "id": "a1f095ea-fa05-45f9-8b3c-f437bb0746da",
+        "assertions": [
+          {
+            "assertion": "Status code is 201",
+            "skipped": false
+          },
+          {
+            "assertion": "Channel id is saved",
+            "skipped": false
+          },
+          {
+            "assertion": "Channel name is correct",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "c4e38cfb-1ab1-4811-917e-c5e04494bd17",
+          "length": 9,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "3524627c-fbef-41d6-bcde-81983630790e"
+        },
+        "item": {
+          "id": "9e38bd8c-0178-4b9f-a0e8-011a0b143c40",
+          "name": "Get Channel By Id",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "28a61153-a9a0-4cf8-a886-2f955b043def",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Correct channel returned', function () {",
+                  "    pm.expect(body.data.id).to.eql(pm.collectionVariables.get('channel_id'));",
+                  "});"
+                ],
+                "_lastExecutionId": "7c934869-58ec-495e-8ed8-4ba6ea45ae18"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "channel",
+              "36e7da20"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "7f0c2c69-4fab-4b11-aa51-7e70cb720237",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "4cc0101e-5a9c-476f-acb8-c208be86277e",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              105,
+              100,
+              34,
+              58,
+              34,
+              51,
+              54,
+              101,
+              55,
+              100,
+              97,
+              50,
+              48,
+              34,
+              44,
+              34,
+              110,
+              97,
+              109,
+              101,
+              34,
+              58,
+              34,
+              75,
+              84,
+              51,
+              32,
+              84,
+              101,
+              115,
+              116,
+              32,
+              67,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              34,
+              44,
+              34,
+              108,
+              105,
+              110,
+              107,
+              34,
+              58,
+              34,
+              64,
+              107,
+              116,
+              51,
+              95,
+              116,
+              101,
+              115,
+              116,
+              95,
+              99,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              34,
+              44,
+              34,
+              110,
+              101,
+              116,
+              119,
+              111,
+              114,
+              107,
+              73,
+              100,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              112,
+              117,
+              98,
+              108,
+              105,
+              115,
+              104,
+              77,
+              111,
+              100,
+              101,
+              34,
+              58,
+              34,
+              98,
+              111,
+              116,
+              34,
+              44,
+              34,
+              105,
+              115,
+              65,
+              99,
+              116,
+              105,
+              118,
+              101,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              97,
+              112,
+              105,
+              73,
+              100,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              97,
+              112,
+              105,
+              72,
+              97,
+              115,
+              104,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              98,
+              111,
+              116,
+              84,
+              111,
+              107,
+              101,
+              110,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              115,
+              101,
+              115,
+              115,
+              105,
+              111,
+              110,
+              70,
+              105,
+              108,
+              101,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              116,
+              105,
+              109,
+              101,
+              90,
+              111,
+              110,
+              101,
+              34,
+              58,
+              34,
+              69,
+              117,
+              114,
+              111,
+              112,
+              101,
+              47,
+              77,
+              111,
+              115,
+              99,
+              111,
+              119,
+              34,
+              44,
+              34,
+              100,
+              101,
+              108,
+              97,
+              121,
+              66,
+              101,
+              116,
+              119,
+              101,
+              101,
+              110,
+              80,
+              111,
+              115,
+              116,
+              115,
+              34,
+              58,
+              53,
+              44,
+              34,
+              97,
+              114,
+              116,
+              115,
+              82,
+              111,
+              111,
+              116,
+              80,
+              97,
+              116,
+              104,
+              34,
+              58,
+              34,
+              34,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              79,
+              75,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 4,
+          "responseSize": 292
+        },
+        "id": "9e38bd8c-0178-4b9f-a0e8-011a0b143c40",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "Correct channel returned",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "fe9f9d33-de7e-4e69-bb17-2cbe7c7c6e25",
+          "length": 9,
+          "cycles": 1,
+          "position": 3,
+          "iteration": 0,
+          "httpRequestId": "4865786b-08c4-4eb2-88e6-d2d5187eb91a"
+        },
+        "item": {
+          "id": "4d841e0b-740b-4392-9762-1d8db29836d3",
+          "name": "Update Parser Config",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}",
+                "parser-config"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hashtags\": [\"#evangelion\", \"#anime\"],\n  \"imagesPerHashtag\": 75,\n  \"sources\": \"pinterest,pixiv\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "71416217-1d54-4965-8b0b-3829f8de17b4",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('imagesPerHashtag updated', function () {",
+                  "    pm.expect(body.data.imagesPerHashtag).to.eql(75);",
+                  "});"
+                ],
+                "_lastExecutionId": "b2cb91ee-70e7-483f-8d1a-c73d9a6c2800"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "channel",
+              "36e7da20",
+              "parser-config"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "178c142c-220b-4b11-bfd3-7627649e6d69",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "101",
+              "system": true
+            }
+          ],
+          "method": "PUT",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"hashtags\": [\"#evangelion\", \"#anime\"],\n  \"imagesPerHashtag\": 75,\n  \"sources\": \"pinterest,pixiv\"\n}"
+          }
+        },
+        "response": {
+          "id": "b703bae0-425a-49dd-8e42-5986cd81e8a1",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              105,
+              100,
+              34,
+              58,
+              49,
+              51,
+              48,
+              44,
+              34,
+              99,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              73,
+              100,
+              34,
+              58,
+              34,
+              51,
+              54,
+              101,
+              55,
+              100,
+              97,
+              50,
+              48,
+              34,
+              44,
+              34,
+              104,
+              97,
+              115,
+              104,
+              116,
+              97,
+              103,
+              115,
+              34,
+              58,
+              91,
+              34,
+              35,
+              101,
+              118,
+              97,
+              110,
+              103,
+              101,
+              108,
+              105,
+              111,
+              110,
+              34,
+              44,
+              34,
+              35,
+              97,
+              110,
+              105,
+              109,
+              101,
+              34,
+              93,
+              44,
+              34,
+              110,
+              101,
+              103,
+              97,
+              116,
+              105,
+              118,
+              101,
+              72,
+              97,
+              115,
+              104,
+              116,
+              97,
+              103,
+              115,
+              34,
+              58,
+              91,
+              93,
+              44,
+              34,
+              105,
+              109,
+              97,
+              103,
+              101,
+              115,
+              80,
+              101,
+              114,
+              72,
+              97,
+              115,
+              104,
+              116,
+              97,
+              103,
+              34,
+              58,
+              55,
+              53,
+              44,
+              34,
+              115,
+              99,
+              114,
+              111,
+              108,
+              108,
+              68,
+              101,
+              108,
+              97,
+              121,
+              77,
+              115,
+              34,
+              58,
+              50,
+              48,
+              48,
+              48,
+              44,
+              34,
+              105,
+              109,
+              97,
+              103,
+              101,
+              76,
+              111,
+              97,
+              100,
+              68,
+              101,
+              108,
+              97,
+              121,
+              77,
+              115,
+              34,
+              58,
+              49,
+              48,
+              48,
+              48,
+              44,
+              34,
+              115,
+              111,
+              117,
+              114,
+              99,
+              101,
+              115,
+              34,
+              58,
+              34,
+              112,
+              105,
+              110,
+              116,
+              101,
+              114,
+              101,
+              115,
+              116,
+              44,
+              112,
+              105,
+              120,
+              105,
+              118,
+              34,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              80,
+              97,
+              114,
+              115,
+              101,
+              114,
+              32,
+              99,
+              111,
+              110,
+              102,
+              105,
+              103,
+              32,
+              117,
+              112,
+              100,
+              97,
+              116,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 5,
+          "responseSize": 244
+        },
+        "id": "4d841e0b-740b-4392-9762-1d8db29836d3",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "imagesPerHashtag updated",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "f6e59218-f052-4bdd-a3d7-d5a712cffd5b",
+          "length": 9,
+          "cycles": 1,
+          "position": 4,
+          "iteration": 0,
+          "httpRequestId": "6304cbbb-52f3-48f7-a30a-6898481d470e"
+        },
+        "item": {
+          "id": "2ba1dd05-1579-4039-93a2-41ca0268c944",
+          "name": "Set Filename Tags",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}",
+                "filename-tags"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "PUT",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tags\": [\n    { \"keyword\": \"asuka\", \"tag\": \"#Asuka_Langley\" },\n    { \"keyword\": \"rei\", \"tag\": \"#Rei_Ayanami\" }\n  ]\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "253f061b-e02a-438b-a81d-ba4b89bc3aee",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Two filename tags created', function () {",
+                  "    pm.expect(body.data.length).to.eql(2);",
+                  "});"
+                ],
+                "_lastExecutionId": "d45c683f-9bc4-4389-81c6-320fa623f44d"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "channel",
+              "36e7da20",
+              "filename-tags"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "4ae10ff2-5044-48b4-9fb5-e45ed161dd46",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "120",
+              "system": true
+            }
+          ],
+          "method": "PUT",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"tags\": [\n    { \"keyword\": \"asuka\", \"tag\": \"#Asuka_Langley\" },\n    { \"keyword\": \"rei\", \"tag\": \"#Rei_Ayanami\" }\n  ]\n}"
+          }
+        },
+        "response": {
+          "id": "aa536757-4a7f-4f2b-924b-bf79b52a8d46",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              91,
+              123,
+              34,
+              107,
+              101,
+              121,
+              119,
+              111,
+              114,
+              100,
+              34,
+              58,
+              34,
+              97,
+              115,
+              117,
+              107,
+              97,
+              34,
+              44,
+              34,
+              116,
+              97,
+              103,
+              34,
+              58,
+              34,
+              35,
+              65,
+              115,
+              117,
+              107,
+              97,
+              95,
+              76,
+              97,
+              110,
+              103,
+              108,
+              101,
+              121,
+              34,
+              125,
+              44,
+              123,
+              34,
+              107,
+              101,
+              121,
+              119,
+              111,
+              114,
+              100,
+              34,
+              58,
+              34,
+              114,
+              101,
+              105,
+              34,
+              44,
+              34,
+              116,
+              97,
+              103,
+              34,
+              58,
+              34,
+              35,
+              82,
+              101,
+              105,
+              95,
+              65,
+              121,
+              97,
+              110,
+              97,
+              109,
+              105,
+              34,
+              125,
+              93,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              70,
+              105,
+              108,
+              101,
+              110,
+              97,
+              109,
+              101,
+              32,
+              116,
+              97,
+              103,
+              115,
+              32,
+              117,
+              112,
+              100,
+              97,
+              116,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 6,
+          "responseSize": 141
+        },
+        "id": "2ba1dd05-1579-4039-93a2-41ca0268c944",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "Two filename tags created",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "ffa41fee-bdc1-47b3-9bcf-9ca1e2277f17",
+          "length": 9,
+          "cycles": 1,
+          "position": 5,
+          "iteration": 0,
+          "httpRequestId": "f710d51d-ce8c-46d9-a4c8-275a9c0be048"
+        },
+        "item": {
+          "id": "78d2db05-a954-4818-88b2-a13f64ac127a",
+          "name": "Add Image",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "data",
+                "images"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileName\": \"kt3_asuka_001.jpg\",\n  \"person\": \"#Asuka_Langley\",\n  \"posted\": 0,\n  \"caption\": \"KT3 image\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "7740c650-57e4-4488-8520-9587b66791e7",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Image linked to channel', function () {",
+                  "    pm.expect(body.data.channelId).to.eql(pm.collectionVariables.get('channel_id'));",
+                  "});"
+                ],
+                "_lastExecutionId": "d124677e-d727-4baa-829c-6011f257827c"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "data",
+              "images"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "f2b4f049-20e1-4bd5-9302-d045a7289984",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "135",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"fileName\": \"kt3_asuka_001.jpg\",\n  \"person\": \"#Asuka_Langley\",\n  \"posted\": 0,\n  \"caption\": \"KT3 image\",\n  \"channelId\": \"36e7da20\"\n}"
+          }
+        },
+        "response": {
+          "id": "ec0025b5-cb62-4fc5-bcc6-648cbfb6476a",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              102,
+              105,
+              108,
+              101,
+              78,
+              97,
+              109,
+              101,
+              34,
+              58,
+              34,
+              107,
+              116,
+              51,
+              95,
+              97,
+              115,
+              117,
+              107,
+              97,
+              95,
+              48,
+              48,
+              49,
+              46,
+              106,
+              112,
+              103,
+              34,
+              44,
+              34,
+              112,
+              101,
+              114,
+              115,
+              111,
+              110,
+              34,
+              58,
+              34,
+              35,
+              65,
+              115,
+              117,
+              107,
+              97,
+              95,
+              76,
+              97,
+              110,
+              103,
+              108,
+              101,
+              121,
+              34,
+              44,
+              34,
+              112,
+              111,
+              115,
+              116,
+              101,
+              100,
+              34,
+              58,
+              48,
+              44,
+              34,
+              99,
+              97,
+              112,
+              116,
+              105,
+              111,
+              110,
+              34,
+              58,
+              34,
+              75,
+              84,
+              51,
+              32,
+              105,
+              109,
+              97,
+              103,
+              101,
+              34,
+              44,
+              34,
+              99,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              73,
+              100,
+              34,
+              58,
+              34,
+              51,
+              54,
+              101,
+              55,
+              100,
+              97,
+              50,
+              48,
+              34,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              73,
+              109,
+              97,
+              103,
+              101,
+              32,
+              97,
+              100,
+              100,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 5,
+          "responseSize": 162
+        },
+        "id": "78d2db05-a954-4818-88b2-a13f64ac127a",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "Image linked to channel",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "9a99ce9c-e25d-411b-a5a4-9c016d2da927",
+          "length": 9,
+          "cycles": 1,
+          "position": 6,
+          "iteration": 0,
+          "httpRequestId": "2111c0cb-70f8-4d7a-9dee-42b63d8406c0"
+        },
+        "item": {
+          "id": "daac6b61-b66c-4f82-9cbb-76398f889f06",
+          "name": "Create Schedule Slot",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "schedule"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-12-25\",\n  \"time\": \"14:30\",\n  \"caption\": \"KT3 scheduled post\",\n  \"channelId\": \"{{channel_id}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "29b29f05-de5d-4b00-bb85-bde10093e034",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('iso_key', body.data.isoKey);",
+                  "pm.test('Slot starts as pending', function () {",
+                  "    pm.expect(body.data.status).to.eql('pending');",
+                  "});"
+                ],
+                "_lastExecutionId": "3cab901d-7667-48f9-b145-b4bb0125b095"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "schedule"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "07a52e27-5de7-4ce3-8fe8-7fa635d53c25",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "107",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"date\": \"2026-12-25\",\n  \"time\": \"14:30\",\n  \"caption\": \"KT3 scheduled post\",\n  \"channelId\": \"36e7da20\"\n}"
+          }
+        },
+        "response": {
+          "id": "0756fa5d-143b-4b03-a9d9-1ef685830df7",
+          "status": "Created",
+          "code": 201,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Location",
+              "value": "http://localhost:5000/api/Schedule/2026-12-25T14%3A30%3A00%2B03%3A00"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              105,
+              115,
+              111,
+              75,
+              101,
+              121,
+              34,
+              58,
+              34,
+              50,
+              48,
+              50,
+              54,
+              45,
+              49,
+              50,
+              45,
+              50,
+              53,
+              84,
+              49,
+              52,
+              58,
+              51,
+              48,
+              58,
+              48,
+              48,
+              43,
+              48,
+              51,
+              58,
+              48,
+              48,
+              34,
+              44,
+              34,
+              100,
+              97,
+              116,
+              101,
+              34,
+              58,
+              34,
+              50,
+              48,
+              50,
+              54,
+              45,
+              49,
+              50,
+              45,
+              50,
+              53,
+              34,
+              44,
+              34,
+              116,
+              105,
+              109,
+              101,
+              34,
+              58,
+              34,
+              49,
+              52,
+              58,
+              51,
+              48,
+              34,
+              44,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              34,
+              58,
+              34,
+              112,
+              101,
+              110,
+              100,
+              105,
+              110,
+              103,
+              34,
+              44,
+              34,
+              102,
+              105,
+              108,
+              101,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              112,
+              101,
+              114,
+              115,
+              111,
+              110,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              44,
+              34,
+              99,
+              97,
+              112,
+              116,
+              105,
+              111,
+              110,
+              34,
+              58,
+              34,
+              75,
+              84,
+              51,
+              32,
+              115,
+              99,
+              104,
+              101,
+              100,
+              117,
+              108,
+              101,
+              100,
+              32,
+              112,
+              111,
+              115,
+              116,
+              34,
+              44,
+              34,
+              99,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              73,
+              100,
+              34,
+              58,
+              34,
+              51,
+              54,
+              101,
+              55,
+              100,
+              97,
+              50,
+              48,
+              34,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              83,
+              108,
+              111,
+              116,
+              32,
+              99,
+              114,
+              101,
+              97,
+              116,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 5,
+          "responseSize": 221
+        },
+        "id": "daac6b61-b66c-4f82-9cbb-76398f889f06",
+        "assertions": [
+          {
+            "assertion": "Status code is 201",
+            "skipped": false
+          },
+          {
+            "assertion": "Slot starts as pending",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "47f1eef4-29be-4f7f-99ed-eaa020ec338c",
+          "length": 9,
+          "cycles": 1,
+          "position": 7,
+          "iteration": 0,
+          "httpRequestId": "ed66b3fb-e356-4c8d-86db-b565ad868722"
+        },
+        "item": {
+          "id": "b4061c0f-1fcb-4194-8748-866fd5a79170",
+          "name": "Get Downloads Count",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "data",
+                "downloads",
+                "count"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "22ab507d-e37f-43bc-83bb-755dc19ae09a",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "pm.test('Count field exists', function () {",
+                  "    pm.expect(body.data.count).to.not.equal(undefined);",
+                  "});"
+                ],
+                "_lastExecutionId": "b912b982-6f8c-4635-91fc-d23ca1dbedcb"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "data",
+              "downloads",
+              "count"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "f7bbe02e-8618-4dbd-b156-e36db8bffe80",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "15678af5-f979-45ce-9eb9-89b8b3f14138",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              100,
+              97,
+              116,
+              97,
+              34,
+              58,
+              123,
+              34,
+              99,
+              111,
+              117,
+              110,
+              116,
+              34,
+              58,
+              57,
+              54,
+              44,
+              34,
+              115,
+              111,
+              117,
+              114,
+              99,
+              101,
+              34,
+              58,
+              110,
+              117,
+              108,
+              108,
+              125,
+              44,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              79,
+              75,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 3,
+          "responseSize": 65
+        },
+        "id": "b4061c0f-1fcb-4194-8748-866fd5a79170",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          },
+          {
+            "assertion": "Count field exists",
+            "skipped": false
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "b7b15e9c-c491-4121-8687-a8a80114370b",
+          "length": 9,
+          "cycles": 1,
+          "position": 8,
+          "iteration": 0,
+          "httpRequestId": "1ab4770b-1410-4e5f-adc1-88af54071ba6"
+        },
+        "item": {
+          "id": "336b2545-e881-421a-967a-4d3f1061b9f2",
+          "name": "Delete Channel",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "channel",
+                "{{channel_id}}"
+              ],
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "method": "DELETE"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "775ab729-47af-449a-a096-a79f13f0433c",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "_lastExecutionId": "44d1cf99-854b-4090-aa19-3973e1163c17"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "5000",
+            "path": [
+              "api",
+              "channel",
+              "36e7da20"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "6fc4c5e6-2502-4eff-af76-484ec0b0bb48",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:5000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "DELETE"
+        },
+        "response": {
+          "id": "067c064b-a2cb-4a91-a9d1-fea51abfc9fc",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 03 Apr 2026 09:13:35 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Kestrel"
+            },
+            {
+              "key": "Transfer-Encoding",
+              "value": "chunked"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              115,
+              117,
+              99,
+              99,
+              101,
+              115,
+              115,
+              34,
+              58,
+              116,
+              114,
+              117,
+              101,
+              44,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              67,
+              104,
+              97,
+              110,
+              110,
+              101,
+              108,
+              32,
+              100,
+              101,
+              108,
+              101,
+              116,
+              101,
+              100,
+              34,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 5,
+          "responseSize": 44
+        },
+        "id": "336b2545-e881-421a-967a-4d3f1061b9f2",
+        "assertions": [
+          {
+            "assertion": "Status code is 200",
+            "skipped": false
+          }
+        ]
+      }
+    ],
+    "transfers": {
+      "responseTotal": 1565
+    },
+    "failures": [],
+    "error": null
+  }
+}

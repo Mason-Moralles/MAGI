@@ -5,7 +5,8 @@
         WindowStartupLocation="CenterOwner"
         Background="#E6E6FF"
         ResizeMode="CanResize"
-        MinHeight="400" MinWidth="500">
+    MinHeight="400" MinWidth="500"
+    AutomationProperties.AutomationId="TaggerSettings_Root">
 
     <Window.Resources>
         <Style x:Key="FieldLabel" TargetType="TextBlock">
@@ -45,7 +46,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource FieldLabel}" Text="Шаблон переименования"/>
-            <TextBox x:Name="TbRenameTemplate" Grid.Column="1" Style="{StaticResource FieldInput}"
+            <TextBox x:Name="TbRenameTemplate" AutomationProperties.AutomationId="TaggerSettings_RenameTemplate" Grid.Column="1" Style="{StaticResource FieldInput}"
                      Text="{}{artist}_{title}_{id}"/>
         </Grid>
 
@@ -56,7 +57,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource FieldLabel}" Text="Разделитель тегов"/>
-            <TextBox x:Name="TbSeparator" Grid.Column="1" Style="{StaticResource FieldInput}"
+            <TextBox x:Name="TbSeparator" AutomationProperties.AutomationId="TaggerSettings_Separator" Grid.Column="1" Style="{StaticResource FieldInput}"
                      Text="_"/>
         </Grid>
 
@@ -67,7 +68,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource FieldLabel}" Text="Обрабатывать только новые"/>
-            <CheckBox x:Name="CbOnlyNew" Grid.Column="1" VerticalAlignment="Center"
+            <CheckBox x:Name="CbOnlyNew" AutomationProperties.AutomationId="TaggerSettings_OnlyNew" Grid.Column="1" VerticalAlignment="Center"
                       IsChecked="True"/>
         </Grid>
 
@@ -79,8 +80,8 @@
             </Grid.ColumnDefinitions>
             <TextBlock Style="{StaticResource FieldLabel}" Text="Режим"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <RadioButton x:Name="RbRename" Content="Переименовать" IsChecked="True" Margin="0,0,16,0" VerticalAlignment="Center"/>
-                <RadioButton x:Name="RbCopy" Content="Копировать" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RbRename" AutomationProperties.AutomationId="TaggerSettings_ModeRename" Content="Переименовать" IsChecked="True" Margin="0,0,16,0" VerticalAlignment="Center"/>
+                <RadioButton x:Name="RbCopy" AutomationProperties.AutomationId="TaggerSettings_ModeCopy" Content="Копировать" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
 
@@ -102,7 +103,7 @@
         </Grid>
 
         <!-- Filename Tags DataGrid -->
-        <DataGrid x:Name="DgTags" Grid.Row="6" Margin="0,0,0,12"
+        <DataGrid x:Name="DgTags" AutomationProperties.AutomationId="TaggerSettings_TagsGrid" Grid.Row="6" Margin="0,0,0,12"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
@@ -121,10 +122,10 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Сохранить" Width="100" Height="34" Margin="0,0,8,0"
+                <Button x:Name="BtnSaveTaggerSettings" AutomationProperties.AutomationId="TaggerSettings_Save" Content="Сохранить" Width="100" Height="34" Margin="0,0,8,0"
                     Background="#B5B5D8" Foreground="White" FontWeight="Bold"
                     Click="Save_Click"/>
-            <Button Content="Закрыть" Width="100" Height="34"
+            <Button AutomationProperties.AutomationId="TaggerSettings_Close" Content="Закрыть" Width="100" Height="34"
                     Background="#D0D0D0" FontWeight="Bold"
                     Click="Close_Click"/>
         </StackPanel>

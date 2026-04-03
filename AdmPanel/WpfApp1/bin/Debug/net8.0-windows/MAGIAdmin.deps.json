@@ -9,7 +9,8 @@
       "MAGIAdmin/1.0.0": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3",
-          "System.Configuration.ConfigurationManager": "8.0.1"
+          "System.Configuration.ConfigurationManager": "8.0.1",
+          "System.Net.Http.Json": "8.0.1"
         },
         "runtime": {
           "MAGIAdmin.dll": {}
@@ -25,7 +26,8 @@
       },
       "System.Configuration.ConfigurationManager/8.0.1": {
         "dependencies": {
-          "System.Diagnostics.EventLog": "8.0.1"
+          "System.Diagnostics.EventLog": "8.0.1",
+          "System.Security.Cryptography.ProtectedData": "8.0.0"
         },
         "runtime": {
           "lib/net8.0/System.Configuration.ConfigurationManager.dll": {
@@ -49,7 +51,9 @@
             "fileVersion": "8.0.1024.46610"
           }
         }
-      }
+      },
+      "System.Net.Http.Json/8.0.1": {},
+      "System.Security.Cryptography.ProtectedData/8.0.0": {}
     }
   },
   "libraries": {
@@ -78,6 +82,20 @@
       "sha512": "sha512-n1ZP7NM2Gkn/MgD8+eOT5MulMj6wfeQMNS2Pizvq5GHCZfjlFMXV2irQlQmJhwA2VABC57M0auudO89Iu2uRLg==",
       "path": "system.diagnostics.eventlog/8.0.1",
       "hashPath": "system.diagnostics.eventlog.8.0.1.nupkg.sha512"
+    },
+    "System.Net.Http.Json/8.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-F423ZLoJFYg1s6iA+Y7BLflVKjEK5XEA2+Z9CHbxJEUtS3+R5pgnFN499QzriRjYpOu6kS2Crd2YBkOFDHrblg==",
+      "path": "system.net.http.json/8.0.1",
+      "hashPath": "system.net.http.json.8.0.1.nupkg.sha512"
+    },
+    "System.Security.Cryptography.ProtectedData/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg==",
+      "path": "system.security.cryptography.protecteddata/8.0.0",
+      "hashPath": "system.security.cryptography.protecteddata.8.0.0.nupkg.sha512"
     }
   }
 }

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "7Y7igFyGy+k=",
+  "dgSpecHash": "mYvAQDRpp0M=",
   "success": true,
   "projectFilePath": "D:\\MAGI\\ApiGateway.Tests\\ApiGateway.Tests.csproj",
   "expectedPackageFiles": [
@@ -146,7 +146,10 @@
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.core\\2.6.2\\xunit.core.2.6.2.nupkg.sha512",
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.extensibility.core\\2.6.2\\xunit.extensibility.core.2.6.2.nupkg.sha512",
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.extensibility.execution\\2.6.2\\xunit.extensibility.execution.2.6.2.nupkg.sha512",
-    "C:\\Users\\Георгий\\.nuget\\packages\\xunit.runner.visualstudio\\2.5.4\\xunit.runner.visualstudio.2.5.4.nupkg.sha512"
+    "C:\\Users\\Георгий\\.nuget\\packages\\xunit.runner.visualstudio\\2.5.4\\xunit.runner.visualstudio.2.5.4.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.25\\microsoft.netcore.app.ref.8.0.25.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.25\\microsoft.windowsdesktop.app.ref.8.0.25.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.25\\microsoft.aspnetcore.app.ref.8.0.25.nupkg.sha512"
   ],
   "logs": []
 }
