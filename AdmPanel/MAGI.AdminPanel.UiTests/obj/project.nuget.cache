@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "BG02xlUWQkg=",
+  "dgSpecHash": "zir06h++I9s=",
   "success": true,
   "projectFilePath": "D:\\MAGI\\AdmPanel\\MAGI.AdminPanel.UiTests\\MAGI.AdminPanel.UiTests.csproj",
   "expectedPackageFiles": [
@@ -119,7 +119,10 @@
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.extensibility.core\\2.6.2\\xunit.extensibility.core.2.6.2.nupkg.sha512",
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.extensibility.execution\\2.6.2\\xunit.extensibility.execution.2.6.2.nupkg.sha512",
     "C:\\Users\\Георгий\\.nuget\\packages\\xunit.runner.visualstudio\\2.5.4\\xunit.runner.visualstudio.2.5.4.nupkg.sha512",
-    "C:\\Users\\Георгий\\.nuget\\packages\\xunit.skippablefact\\1.4.13\\xunit.skippablefact.1.4.13.nupkg.sha512"
+    "C:\\Users\\Георгий\\.nuget\\packages\\xunit.skippablefact\\1.4.13\\xunit.skippablefact.1.4.13.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.25\\microsoft.netcore.app.ref.8.0.25.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.25\\microsoft.windowsdesktop.app.ref.8.0.25.nupkg.sha512",
+    "C:\\Users\\Георгий\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.25\\microsoft.aspnetcore.app.ref.8.0.25.nupkg.sha512"
   ],
   "logs": []
 }
